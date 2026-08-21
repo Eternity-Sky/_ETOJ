@@ -11,6 +11,8 @@ jobs:
   judge:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      result: ${{ steps.set_result.outputs.result }}
     steps:
       - uses: actions/checkout@v4
 
@@ -66,11 +68,13 @@ jobs:
         run: node .github/scripts/judge.js submission.json
         continue-on-error: true
 
-      - name: Upload result as artifact
+      - name: Set result output
+        id: set_result
         env:
           JUDGE_RESULT: ${{ steps.judge.outputs.result }}
           SUB_ID: ${{ github.event.client_payload.submissionId }}
           PROBLEM_ID: ${{ github.event.client_payload.problemId }}
+          USER_ID: ${{ github.event.client_payload.userId }}
         run: |
           echo "Judge result: $JUDGE_RESULT"
           node -e "
@@ -78,7 +82,7 @@ jobs:
             const body = {
               submissionId: Number(process.env.SUB_ID),
               problemId: Number(process.env.PROBLEM_ID),
-              userId: result.userId || 0,
+              userId: Number(process.env.USER_ID),
               status: result.status || 'runtime_error',
               resultJson: JSON.stringify(result.details || {}),
               runTimeMs: result.runTimeMs || null,
@@ -88,6 +92,8 @@ jobs:
             const fs = require('fs');
             fs.writeFileSync('result.json', JSON.stringify(body));
             console.log('Result saved to result.json');
+            console.log('Setting output...');
+            console.log('::set-output name=result::' + JSON.stringify(body));
           "
           
       - name: Upload artifact
