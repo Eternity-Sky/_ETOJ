@@ -1,0 +1,116 @@
+name: Judge Submission
+
+on:
+  repository_dispatch:
+    types: [judge-submission]
+
+env:
+  API_WEBHOOK: ${{ secrets.JUDGE_WEBHOOK_URL }}
+  API_TOKEN: ${{ secrets.JUDGE_INTERNAL_TOKEN }}
+
+jobs:
+  judge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Python
+        if: ${{ github.event.client_payload.language == 'python3' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Java
+        if: ${{ github.event.client_payload.language == 'java' }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Set up Rust
+        if: ${{ github.event.client_payload.language == 'rust' }}
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Go
+        if: ${{ github.event.client_payload.language == 'go' }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Install GCC (C/C++)
+        if: ${{ github.event.client_payload.language == 'c' || github.event.client_payload.language == 'cpp' }}
+        run: sudo apt-get update && sudo apt-get install -y gcc g++
+
+      - name: Write submission data
+        env:
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: |
+          echo "$PAYLOAD" > submission.json
+          node -e "
+            const p = require('./submission.json');
+            const fs = require('fs');
+            const ext = { c: 'c', cpp: 'cpp', python3: 'py', java: 'java', javascript: 'js', typescript: 'ts', rust: 'rs', go: 'go' };
+            const e = ext[p.language] || p.language;
+            const fname = p.language === 'java' ? 'Main.java' : ('solution.' + e);
+            fs.writeFileSync(fname, p.code);
+            console.log('Wrote', fname, 'length', p.code.length);
+          "
+
+      - name: Run judge
+        id: judge
+        run: node .github/scripts/judge.js submission.json
+        continue-on-error: true
+
+      - name: Report result
+        env:
+          JUDGE_RESULT: ${{ steps.judge.outputs.result }}
+          SUB_ID: ${{ github.event.client_payload.submissionId }}
+          PROBLEM_ID: ${{ github.event.client_payload.problemId }}
+        run: |
+          echo "Judge result: $JUDGE_RESULT"
+          node -e "
+            const result = JSON.parse(process.env.JUDGE_RESULT || '{}');
+            const body = {
+              submissionId: Number(process.env.SUB_ID),
+              problemId: Number(process.env.PROBLEM_ID),
+              userId: result.userId || 0,
+              status: result.status || 'runtime_error',
+              resultJson: JSON.stringify(result.details || {}),
+              runTimeMs: result.runTimeMs || null,
+              memoryKb: result.memoryKb || null,
+              accepted: result.status === 'accepted'
+            };
+            console.log('POST body:', JSON.stringify(body));
+            const url = process.env.API_WEBHOOK;
+            if (!url || url.includes('your')) {
+              console.log('WARN: no webhook URL configured, skipping result report');
+              process.exit(0);
+            }
+            const https = require('https');
+            const data = JSON.stringify(body);
+            const u = new URL(url);
+            const opts = {
+              hostname: u.hostname,
+              port: 443,
+              path: u.pathname + u.search,
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(data)
+              }
+            };
+            const req = https.request(opts, res => {
+              let d = '';
+              res.on('data', c => d += c);
+              res.on('end', () => console.log('Webhook response:', res.statusCode, d));
+            });
+            req.on('error', e => console.error('Webhook error:', e));
+            req.write(data);
+            req.end();
+          "

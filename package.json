@@ -1,0 +1,18 @@
+{
+  "name": "etoj",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev:api": "npm --prefix api run dev",
+    "dev:web": "npm --prefix frontend run dev",
+    "deploy:api": "npm --prefix api run deploy",
+    "deploy:web": "npm --prefix frontend run deploy",
+    "db:init": "npx wrangler d1 execute etoj --file ./migrations/0001_init.sql",
+    "db:init:local": "npx wrangler d1 execute etoj --local --file ./migrations/0001_init.sql",
+    "seed": "npx wrangler d1 execute etoj --file ./migrations/0002_seed.sql",
+    "seed:local": "npx wrangler d1 execute etoj --local --file ./migrations/0002_seed.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^3.60.0"
+  }
+}
