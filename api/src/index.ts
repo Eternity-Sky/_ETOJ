@@ -1,8 +1,9 @@
 import { Hono } from "hono";
-import { jwt, sign, verify } from "hono/jwt";
 import { cors } from "hono/cors";
+import { verify } from "hono/jwt";
+import type { D1Database } from "@cloudflare/workers-types";
 import { hashPassword, verifyPassword, generateToken } from "./auth";
-import { triggerJudge, JudgePayload } from "./judge";
+import { triggerJudge, type JudgePayload } from "./judge";
 
 type Bindings = {
   DB: D1Database;
@@ -20,17 +21,26 @@ type Variables = {
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-app.use("*", (c, next) => {
-  const origin = c.env.CORS_ORIGIN || "*";
-  return cors({
-    origin: origin === "*" ? true : origin,
+app.use(
+  "*",
+  cors({
+    origin: (origin, c) => {
+      const allow = c.env?.CORS_ORIGIN || "*";
+      if (allow === "*") return origin || "*";
+      return allow
+        .split(",")
+        .map((s) => s.trim())
+        .includes(origin)
+        ? origin
+        : null;
+    },
     allowHeaders: ["Content-Type", "Authorization"],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
-    credentials: true,
-  })(c, next);
-});
+    credentials: false,
+  }),
+);
 
 const authMiddleware = async (c: any, next: any) => {
   try {
@@ -39,10 +49,10 @@ const authMiddleware = async (c: any, next: any) => {
       return c.json({ error: "Unauthorized" }, 401);
     }
     const token = authHeader.slice(7);
-    const payload = await verify(token, c.env.JWT_SECRET);
-    c.set("userId", payload.sub as number);
-    c.set("username", payload.username as string);
-    c.set("role", payload.role as string);
+    const payload: any = await verify(token, c.env.JWT_SECRET);
+    c.set("userId", Number(payload.sub));
+    c.set("username", String(payload.username));
+    c.set("role", String(payload.role));
     await next();
   } catch {
     return c.json({ error: "Invalid token" }, 401);
@@ -50,33 +60,31 @@ const authMiddleware = async (c: any, next: any) => {
 };
 
 const adminMiddleware = async (c: any, next: any) => {
-  if (c.get("role") !== "admin") {
+  if (c.get("role") !== "admin")
     return c.json({ error: "Admin required" }, 403);
-  }
   await next();
 };
 
-app.get("/", (c) => c.json({ name: "ETOJ API", version: "0.1.0" }));
+app.get("/", (c) =>
+  c.json({ name: "ETOJ API", version: "0.1.0", ts: Date.now() }),
+);
 
 app.post("/api/auth/register", async (c) => {
   try {
     const { username, email, password } = await c.req.json();
-    if (!username || !email || !password) {
+    if (!username || !email || !password)
       return c.json({ error: "Missing fields" }, 400);
-    }
-    if (password.length < 6) {
+    if (password.length < 6)
       return c.json({ error: "Password too short" }, 400);
-    }
     const hash = await hashPassword(password);
     const result = await c.env.DB.prepare(
       "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
     )
       .bind(username, email, hash)
       .run();
-    if (!result.success) {
+    if (!result.success)
       return c.json({ error: "Username or email exists" }, 400);
-    }
-    const userId = (result.meta as any).last_row_id as number;
+    const userId = Number((result.meta as any).last_row_id);
     const token = await generateToken(
       { sub: userId, username, role: "user" },
       c.env.JWT_SECRET,
@@ -93,35 +101,27 @@ app.post("/api/auth/register", async (c) => {
 app.post("/api/auth/login", async (c) => {
   try {
     const { username, password } = await c.req.json();
-    const user = await c.env.DB.prepare(
+    const user: any = await c.env.DB.prepare(
       "SELECT * FROM users WHERE username = ? OR email = ?",
     )
       .bind(username, username)
       .first();
-    if (!user) {
-      return c.json({ error: "Invalid credentials" }, 401);
-    }
-    const ok = await verifyPassword(password, (user as any).password_hash);
-    if (!ok) {
-      return c.json({ error: "Invalid credentials" }, 401);
-    }
+    if (!user) return c.json({ error: "Invalid credentials" }, 401);
+    const ok = await verifyPassword(password, user.password_hash);
+    if (!ok) return c.json({ error: "Invalid credentials" }, 401);
     const token = await generateToken(
-      {
-        sub: (user as any).id,
-        username: (user as any).username,
-        role: (user as any).role,
-      },
+      { sub: user.id, username: user.username, role: user.role },
       c.env.JWT_SECRET,
     );
     return c.json({
       token,
       user: {
-        id: (user as any).id,
-        username: (user as any).username,
-        email: (user as any).email,
-        role: (user as any).role,
-        solved_count: (user as any).solved_count,
-        submissions_count: (user as any).submissions_count,
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        solved_count: user.solved_count,
+        submissions_count: user.submissions_count,
       },
     });
   } catch (e: any) {
@@ -157,14 +157,14 @@ app.get("/api/problems", async (c) => {
   )
     .bind(...params, pageSize, offset)
     .all();
-  const total = await c.env.DB.prepare(
+  const total: any = await c.env.DB.prepare(
     `SELECT COUNT(*) as c FROM problems ${where}`,
   )
     .bind(...params)
     .first();
   return c.json({
     items: problems.results,
-    total: (total as any).c,
+    total: total?.c ?? 0,
     page,
     pageSize,
   });
@@ -200,21 +200,16 @@ app.post("/api/problems", authMiddleware, adminMiddleware, async (c) => {
       body.memory_limit_mb || 256,
     )
     .run();
-  return c.json({ id: (result.meta as any).last_row_id });
-});
-
-app.get("/api/problems/:slug/editorial", async (c) => {
-  return c.json({ markdown: "" });
+  return c.json({ id: Number((result.meta as any).last_row_id) });
 });
 
 app.post("/api/submissions", authMiddleware, async (c) => {
   try {
     const userId = c.get("userId");
     const { problemSlug, language, code } = await c.req.json();
-    if (!problemSlug || !language || !code) {
+    if (!problemSlug || !language || !code)
       return c.json({ error: "Missing fields" }, 400);
-    }
-    const problem = await c.env.DB.prepare(
+    const problem: any = await c.env.DB.prepare(
       "SELECT id, test_cases_json, time_limit_ms, memory_limit_mb FROM problems WHERE slug = ?",
     )
       .bind(problemSlug)
@@ -224,14 +219,14 @@ app.post("/api/submissions", authMiddleware, async (c) => {
     const insert = await c.env.DB.prepare(
       `INSERT INTO submissions (user_id, problem_id, language, code, status) VALUES (?, ?, ?, ?, 'pending')`,
     )
-      .bind(userId, (problem as any).id, language, code)
+      .bind(userId, problem.id, language, code)
       .run();
-    const submissionId = (insert.meta as any).last_row_id as number;
+    const submissionId = Number((insert.meta as any).last_row_id);
 
     await c.env.DB.prepare(
       `UPDATE problems SET submission_count = submission_count + 1 WHERE id = ?`,
     )
-      .bind((problem as any).id)
+      .bind(problem.id)
       .run();
     await c.env.DB.prepare(
       `UPDATE users SET submissions_count = submissions_count + 1 WHERE id = ?`,
@@ -241,13 +236,13 @@ app.post("/api/submissions", authMiddleware, async (c) => {
 
     const payload: JudgePayload = {
       submissionId,
-      problemId: (problem as any).id,
+      problemId: problem.id,
       userId,
       language,
       code,
-      testCases: JSON.parse((problem as any).test_cases_json),
-      timeLimitMs: (problem as any).time_limit_ms,
-      memoryLimitMb: (problem as any).memory_limit_mb,
+      testCases: JSON.parse(problem.test_cases_json),
+      timeLimitMs: problem.time_limit_ms,
+      memoryLimitMb: problem.memory_limit_mb,
     };
     try {
       await triggerJudge(
@@ -258,9 +253,8 @@ app.post("/api/submissions", authMiddleware, async (c) => {
         c.env.DB,
       );
     } catch (e: any) {
-      console.error("Judge trigger failed:", e);
+      console.error("Judge trigger failed:", e.message);
     }
-
     return c.json({ id: submissionId, status: "pending" });
   } catch (e: any) {
     return c.json({ error: e.message || "Submit failed" }, 400);
@@ -286,31 +280,25 @@ app.get("/api/submissions", authMiddleware, async (c) => {
   )
     .bind(...params, pageSize, offset)
     .all();
-  const total = await c.env.DB.prepare(
+  const total: any = await c.env.DB.prepare(
     `SELECT COUNT(*) as c FROM submissions s ${where}`,
   )
     .bind(...params)
     .first();
-  return c.json({
-    items: items.results,
-    total: (total as any).c,
-    page,
-    pageSize,
-  });
+  return c.json({ items: items.results, total: total?.c ?? 0, page, pageSize });
 });
 
 app.get("/api/submissions/:id", authMiddleware, async (c) => {
   const id = Number(c.req.param("id"));
   const userId = c.get("userId");
-  const sub = await c.env.DB.prepare(
+  const sub: any = await c.env.DB.prepare(
     `SELECT s.*, p.title as problem_title, p.slug as problem_slug, p.description, p.sample_input, p.sample_output FROM submissions s LEFT JOIN problems p ON s.problem_id = p.id WHERE s.id = ?`,
   )
     .bind(id)
     .first();
   if (!sub) return c.json({ error: "Not found" }, 404);
-  if ((sub as any).user_id !== userId && c.get("role") !== "admin") {
+  if (sub.user_id !== userId && c.get("role") !== "admin")
     return c.json({ error: "Forbidden" }, 403);
-  }
   return c.json(sub);
 });
 
@@ -338,12 +326,12 @@ app.post("/api/webhooks/judge", async (c) => {
       )
       .run();
     if (accepted && problemId && userId) {
-      const exists = await c.env.DB.prepare(
+      const exists: any = await c.env.DB.prepare(
         `SELECT COUNT(*) as c FROM submissions WHERE user_id = ? AND problem_id = ? AND status = 'accepted'`,
       )
         .bind(userId, problemId)
         .first();
-      if ((exists as any).c === 1) {
+      if (exists && exists.c === 1) {
         await c.env.DB.prepare(
           `UPDATE users SET solved_count = solved_count + 1 WHERE id = ?`,
         )
@@ -370,8 +358,8 @@ app.get("/api/rankings", async (c) => {
 });
 
 app.onError((err, c) => {
-  console.error(err);
-  return c.json({ error: err.message }, 500);
+  console.error("Unhandled:", err);
+  return c.json({ error: err.message || "Internal" }, 500);
 });
 
 export default app;
