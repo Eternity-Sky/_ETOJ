@@ -69,6 +69,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload result to API
+        if: always() # 无论评测成功还是失败都执行
         env:
           JUDGE_RESULT: ${{ steps.judge.outputs.result }}
           SUB_ID: ${{ github.event.client_payload.submissionId }}
