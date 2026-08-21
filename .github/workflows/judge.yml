@@ -68,13 +68,13 @@ jobs:
         run: node .github/scripts/judge.js submission.json
         continue-on-error: true
 
-      - name: Set result output
-        id: set_result
+      - name: Upload result to API
         env:
           JUDGE_RESULT: ${{ steps.judge.outputs.result }}
           SUB_ID: ${{ github.event.client_payload.submissionId }}
           PROBLEM_ID: ${{ github.event.client_payload.problemId }}
           USER_ID: ${{ github.event.client_payload.userId }}
+          API_TOKEN: ${{ secrets.API_TOKEN }}
         run: |
           echo "Judge result: $JUDGE_RESULT"
           node -e "
@@ -89,15 +89,31 @@ jobs:
               memoryKb: result.memoryKb || null,
               accepted: result.status === 'accepted'
             };
-            const fs = require('fs');
-            fs.writeFileSync('result.json', JSON.stringify(body));
-            console.log('Result saved to result.json');
-            console.log('Setting output...');
-            console.log('::set-output name=result::' + JSON.stringify(body));
+            console.log('Sending result to API:', JSON.stringify(body));
+            
+            const https = require('https');
+            const data = JSON.stringify(body);
+            
+            const options = {
+              hostname: 'api.csp.qzz.io',
+              port: 443,
+              path: '/api/webhooks/judge',
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': data.length,
+                'Authorization': 'Bearer ' + process.env.API_TOKEN
+              }
+            };
+            
+            const req = https.request(options, (res) => {
+              console.log('API response status:', res.statusCode);
+              let responseData = '';
+              res.on('data', (chunk) => responseData += chunk);
+              res.on('end', () => console.log('API response:', responseData));
+            });
+            
+            req.on('error', (e) => console.error('API request error:', e.message));
+            req.write(data);
+            req.end();
           "
-          
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: judge-result-${{ github.event.client_payload.submissionId }}
-          path: result.json
