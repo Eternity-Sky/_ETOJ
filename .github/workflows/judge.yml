@@ -5,8 +5,7 @@ on:
     types: [judge-submission]
 
 env:
-  API_WEBHOOK: ${{ secrets.JUDGE_WEBHOOK_URL }}
-  API_TOKEN: ${{ secrets.JUDGE_INTERNAL_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   judge:
@@ -67,7 +66,7 @@ jobs:
         run: node .github/scripts/judge.js submission.json
         continue-on-error: true
 
-      - name: Report result
+      - name: Upload result as artifact
         env:
           JUDGE_RESULT: ${{ steps.judge.outputs.result }}
           SUB_ID: ${{ github.event.client_payload.submissionId }}
@@ -86,31 +85,13 @@ jobs:
               memoryKb: result.memoryKb || null,
               accepted: result.status === 'accepted'
             };
-            console.log('POST body:', JSON.stringify(body));
-            const url = process.env.API_WEBHOOK;
-            if (!url || url.includes('your')) {
-              console.log('WARN: no webhook URL configured, skipping result report');
-              process.exit(0);
-            }
-            const https = require('https');
-            const data = JSON.stringify(body);
-            const u = new URL(url);
-            const opts = {
-              hostname: u.hostname,
-              port: 443,
-              path: u.pathname + u.search,
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(data)
-              }
-            };
-            const req = https.request(opts, res => {
-              let d = '';
-              res.on('data', c => d += c);
-              res.on('end', () => console.log('Webhook response:', res.statusCode, d));
-            });
-            req.on('error', e => console.error('Webhook error:', e));
-            req.write(data);
-            req.end();
+            const fs = require('fs');
+            fs.writeFileSync('result.json', JSON.stringify(body));
+            console.log('Result saved to result.json');
           "
+          
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: judge-result-${{ github.event.client_payload.submissionId }}
+          path: result.json
