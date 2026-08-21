@@ -242,6 +242,7 @@ app.post("/api/submissions", authMiddleware, async (c) => {
     const payload: JudgePayload = {
       submissionId,
       problemId: (problem as any).id,
+      userId,
       language,
       code,
       testCases: JSON.parse((problem as any).test_cases_json),
@@ -249,7 +250,13 @@ app.post("/api/submissions", authMiddleware, async (c) => {
       memoryLimitMb: (problem as any).memory_limit_mb,
     };
     try {
-      await triggerJudge(payload, c.env.GITHUB_TOKEN, c.env.GITHUB_REPO);
+      await triggerJudge(
+        payload,
+        c.env.GITHUB_TOKEN,
+        c.env.GITHUB_REPO,
+        (p: Promise<any>) => c.executionCtx.waitUntil(p),
+        c.env.DB,
+      );
     } catch (e: any) {
       console.error("Judge trigger failed:", e);
     }
