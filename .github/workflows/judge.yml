@@ -62,10 +62,17 @@ jobs:
           USER_ID: ${{ github.event.client_payload.userId }}
           API_TOKEN: ${{ secrets.API_TOKEN }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-          START_TIME: ${{ github.event.client_payload.startTime }}
+          GITHUB_RUN_STARTED: ${{ github.event.client_payload.startTime }}
+          GITHUB_JOB_STARTED: ${{ github.event.started_at }}
         run: |
-          END_TIME=$(date +%s%3N)
-          JUDGE_LATENCY_MS=$((END_TIME - START_TIME))
+          # 计算实际评测延迟：从任务开始到评测完成
+          if [ -n "$GITHUB_JOB_STARTED" ]; then
+            JOB_START_TIME=$(date -d "$GITHUB_JOB_STARTED" +%s%3N 2>/dev/null || echo "0")
+            END_TIME=$(date +%s%3N)
+            JUDGE_LATENCY_MS=$((END_TIME - JOB_START_TIME))
+          else
+            JUDGE_LATENCY_MS=0
+          fi
           
           if [ -f judge_output.txt ]; then
             JUDGE_OUTPUT=$(cat judge_output.txt)

@@ -244,7 +244,6 @@ app.post("/api/submissions", authMiddleware, async (c) => {
       testCases: JSON.parse(problem.test_cases_json),
       timeLimitMs: problem.time_limit_ms,
       memoryLimitMb: problem.memory_limit_mb,
-      startTime: Date.now(),
     };
     
     try {
