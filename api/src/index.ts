@@ -556,32 +556,23 @@ app.post("/api/submissions/retest", authMiddleware, async (c) => {
       return c.json({ error: "Problem not found" }, 404);
     }
     
-    // 创建新的提交记录
-    const result = await c.env.DB.prepare(
-      `INSERT INTO submissions (user_id, problem_id, language, code, status) VALUES (?, ?, ?, ?, ?)`,
+    // 重置原有提交记录的状态
+    await c.env.DB.prepare(
+      `UPDATE submissions SET status = 'pending', result_json = NULL, run_time_ms = NULL, memory_kb = NULL WHERE id = ?`,
     )
-      .bind(
-        originalSubmission.user_id,
-        originalSubmission.problem_id,
-        originalSubmission.language,
-        originalSubmission.code,
-        "pending",
-      )
+      .bind(submissionId)
       .run();
-    
-    if (!result.success) {
-      return c.json({ error: "Failed to create retest submission" }, 400);
-    }
-    
-    const newSubmissionId = result.meta.last_row_id;
     
     // 触发评测
     const payload = {
-      submissionId: newSubmissionId,
+      submissionId: submissionId,
       problemId: originalSubmission.problem_id,
       userId: originalSubmission.user_id,
       language: originalSubmission.language,
       code: originalSubmission.code,
+      testCases: JSON.parse(problem.test_cases_json),
+      timeLimitMs: problem.time_limit_ms,
+      memoryLimitMb: problem.memory_limit_mb,
     };
     
     await triggerJudge(
@@ -592,7 +583,7 @@ app.post("/api/submissions/retest", authMiddleware, async (c) => {
       c.env.DB,
     );
     
-    return c.json({ id: newSubmissionId, message: "重测成功" });
+    return c.json({ id: submissionId, message: "重测成功" });
   } catch (e: any) {
     console.error("重测失败:", e.message);
     return c.json({ error: e.message }, 500);

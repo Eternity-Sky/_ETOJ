@@ -15,18 +15,12 @@ async function retest() {
   if (!confirm('确定要重新评测这条提交吗？')) return
   
   try {
-    console.log('=== 开始重测提交 ===')
-    console.log('提交ID:', props.id)
-    
     const res = await api.post<any>('/api/submissions/retest', { submissionId: props.id })
     
-    console.log('✅ 重测成功')
-    console.log('新的提交ID:', res.id)
-    
-    alert('重测成功，新提交ID: ' + res.id)
-    location.href = `/submission/${res.id}`
+    alert('重测成功')
+    // 重新加载当前提交记录
+    load()
   } catch (e: any) {
-    console.error('❌ 重测失败:', e.message)
     alert('重测失败: ' + e.message)
   }
 }
