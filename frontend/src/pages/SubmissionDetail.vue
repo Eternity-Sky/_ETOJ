@@ -37,6 +37,11 @@ const parsedResult = computed(() => {
 
 function getTestCaseStatus(c: any): string {
   if (c.passed) return 'AC'
+  if (c.reason === 'TLE') return 'TLE'
+  if (c.reason === 'MLE') return 'MLE'
+  if (c.reason === 'OLE') return 'OLE'
+  if (c.reason === 'RE') return 'RE'
+  if (c.reason === 'CE') return 'CE'
   if (c.status) return c.status.toUpperCase()
   return 'WA'
 }
@@ -116,11 +121,6 @@ async function load() {
       judging.value = true
       startPoll()
     } else {
-      judging.value = false
-    }
-    
-    // 如果有编译错误，停止轮询
-    if (submission.status === 'compile_error') {
       judging.value = false
       clearInterval(pollTimer.value)
     }
@@ -260,7 +260,7 @@ onMounted(() => {
               <div class="text-xs font-bold">#{{ i + 1 }}</div>
               <div class="text-sm font-bold mt-1">{{ getTestCaseInfo(c, i).config.label }}</div>
               <div v-if="c.passed && c.timeMs" class="text-xs mt-1 opacity-90">
-                {{ c.timeMs }}ms/{{ (c.memoryKb/1024).toFixed(0) }}KB
+                {{ c.timeMs }}ms/{{ c.memoryKb ? (c.memoryKb/1024).toFixed(0) + 'KB' : '0KB' }}
               </div>
               <div v-else-if="c.passed" class="text-xs mt-1 opacity-90">
                 {{ c.timeMs }}ms/0KB

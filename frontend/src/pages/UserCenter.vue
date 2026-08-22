@@ -8,9 +8,9 @@ const recent = ref<any[]>([]);
 
 const solveRate = computed(() => {
   if (!user.value) return 0;
-  return user.value.submissions_count
-    ? Math.round((user.value.solved_count * 100) / user.value.submissions_count)
-    : 0;
+  if (!user.value.submissions_count || user.value.submissions_count === 0) return 0;
+  const rate = Math.round((user.value.solved_count * 100) / user.value.submissions_count);
+  return Math.min(rate, 100);
 });
 
 async function load() {
@@ -96,7 +96,7 @@ onMounted(load);
             </td>
             <td class="px-5 py-3">
               <RouterLink
-                :to="`/problem/${s.problem_slug}`"
+                :to="`/problem/${s.problem_id}`"
                 class="link font-medium"
                 >{{ s.problem_title }}</RouterLink
               >

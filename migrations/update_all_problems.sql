@@ -1,0 +1,4 @@
+UPDATE problems SET test_cases_json = '[{"input":"1 2","output":"3"},{"input":"10 20","output":"30"},{"input":"-5 5","output":"0"},{"input":"100 200","output":"300"}]' WHERE id = 1;
+UPDATE problems SET test_cases_json = '[{"input":"hello","output":"olleh"},{"input":"abc","output":"cba"},{"input":"12345","output":"54321"}]' WHERE id = 2;
+UPDATE problems SET test_cases_json = '[{"input":"1","output":"1"},{"input":"2","output":"1"},{"input":"5","output":"5"},{"input":"10","output":"55"},{"input":"20","output":"6765"}]' WHERE id = 3;
+UPDATE problems SET test_cases_json = '[{"input":"2","output":"YES"},{"input":"7","output":"YES"},{"input":"4","output":"NO"},{"input":"997","output":"YES"},{"input":"1000","output":"NO"}]' WHERE id = 4;

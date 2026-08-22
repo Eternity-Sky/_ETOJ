@@ -18,6 +18,8 @@ const total = ref(0);
 const page = ref(1);
 const pageSize = 20;
 const loading = ref(false);
+const judgeHealth = ref<any>(null);
+const healthLoading = ref(false);
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize));
 
@@ -48,12 +50,61 @@ async function load() {
   }
 }
 
-onMounted(load);
+async function loadJudgeHealth() {
+  try {
+    healthLoading.value = true;
+    const health = await api.get('/api/judge/health');
+    judgeHealth.value = health;
+  } catch (e: any) {
+    console.error('获取评测机状态失败:', e);
+  } finally {
+    healthLoading.value = false;
+  }
+}
+
+onMounted(() => {
+  load();
+  loadJudgeHealth();
+  // 每30秒更新一次健康状态
+  setInterval(loadJudgeHealth, 30000);
+});
 </script>
 
 <template>
   <div class="space-y-5">
     <h1 class="text-2xl font-bold">提交记录</h1>
+    
+    <!-- 评测机健康状态 -->
+    <div v-if="judgeHealth" class="card p-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div 
+            :class="[
+              'w-3 h-3 rounded-full',
+              judgeHealth.status === 'healthy' ? 'bg-emerald-500' :
+              judgeHealth.status === 'running' ? 'bg-blue-500' :
+              judgeHealth.status === 'queued' ? 'bg-yellow-500' :
+              judgeHealth.status === 'error' ? 'bg-red-500' : 'bg-zinc-500'
+            ]"
+          ></div>
+          <span class="font-medium">{{ judgeHealth.message }}</span>
+        </div>
+        <div class="text-sm text-zinc-500">
+          <span v-if="judgeHealth.latency !== null">
+            延迟: {{ judgeHealth.latency }}ms
+          </span>
+          <span v-if="judgeHealth.runId" class="ml-4">
+            <a 
+              :href="`https://github.com/Eternity-Sky/_ETOJ/actions/runs/${judgeHealth.runId}`"
+              target="_blank"
+              class="text-blue-600 hover:text-blue-700"
+            >
+              最新运行 #{{ judgeHealth.runId }}
+            </a>
+          </span>
+        </div>
+      </div>
+    </div>
     
     <div v-if="loading" class="flex items-center justify-center py-12">
       <div class="flex flex-col items-center gap-4">
@@ -85,6 +136,16 @@ onMounted(load);
               class="text-right px-4 py-3 font-medium w-44 hidden md:table-cell"
             >
               提交时间
+            </th>
+            <th
+              class="text-right px-4 py-3 font-medium w-32 hidden lg:table-cell"
+            >
+              GitHub Actions
+            </th>
+            <th
+              class="text-right px-4 py-3 font-medium w-24 hidden lg:table-cell"
+            >
+              评测延迟
             </th>
             <th class="text-right px-4 py-3 font-medium w-20">操作</th>
           </tr>
@@ -139,6 +200,27 @@ onMounted(load);
               class="px-4 py-3 text-right text-zinc-500 text-xs hidden md:table-cell"
             >
               {{ new Date(s.created_at).toLocaleString() }}
+            </td>
+            <td
+              class="px-4 py-3 text-right text-zinc-500 text-xs hidden lg:table-cell"
+            >
+              <a 
+                v-if="s.github_run_id"
+                :href="`https://github.com/Eternity-Sky/_ETOJ/actions/runs/${s.github_run_id}`"
+                target="_blank"
+                class="text-blue-600 hover:text-blue-700 font-mono"
+              >
+                #{{ s.github_run_id }}
+              </a>
+              <span v-else class="text-zinc-400">-</span>
+            </td>
+            <td
+              class="px-4 py-3 text-right text-zinc-500 text-xs hidden lg:table-cell"
+            >
+              <span v-if="s.judge_latency_ms !== null && s.judge_latency_ms !== undefined">
+                {{ s.judge_latency_ms }}ms
+              </span>
+              <span v-else class="text-zinc-400">-</span>
             </td>
             <td class="px-4 py-3 text-right">
               <RouterLink :to="`/submission/${s.id}`" class="btn-ghost text-blue-600 hover:text-blue-700 text-xs">详情</RouterLink>

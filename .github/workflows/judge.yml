@@ -61,7 +61,12 @@ jobs:
           PROBLEM_ID: ${{ github.event.client_payload.problemId }}
           USER_ID: ${{ github.event.client_payload.userId }}
           API_TOKEN: ${{ secrets.API_TOKEN }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          START_TIME: ${{ github.event.client_payload.startTime }}
         run: |
+          END_TIME=$(date +%s%3N)
+          JUDGE_LATENCY_MS=$((END_TIME - START_TIME))
+          
           if [ -f judge_output.txt ]; then
             JUDGE_OUTPUT=$(cat judge_output.txt)
           else
@@ -85,10 +90,14 @@ jobs:
           
           echo "Judge output: $JUDGE_OUTPUT"
           echo "Compiler output: $COMPILER_OUTPUT"
+          echo "GitHub Run ID: $GITHUB_RUN_ID"
+          echo "Judge latency: ${JUDGE_LATENCY_MS}ms"
           
           node -e "
             const judgeOutput = process.env.JUDGE_OUTPUT || '{}';
             const compilerOutput = process.env.COMPILER_OUTPUT || '';
+            const githubRunId = process.env.GITHUB_RUN_ID || '';
+            const judgeLatencyMs = process.env.JUDGE_LATENCY_MS || '0';
             
             let result;
             try {
@@ -134,7 +143,9 @@ jobs:
               resultJson: JSON.stringify(result.details),
               runTimeMs: result.runTimeMs || null,
               memoryKb: result.memoryKb || null,
-              accepted: result.status === 'accepted'
+              accepted: result.status === 'accepted',
+              githubRunId: githubRunId,
+              judgeLatencyMs: Number(judgeLatencyMs)
             };
             console.log('Sending result to API:', JSON.stringify(body));
             

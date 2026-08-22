@@ -26,31 +26,31 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-full flex flex-col">
+  <div class="min-h-screen bg-zinc-900 text-zinc-100 flex flex-col">
     <ToastContainer />
-    <header class="sticky top-0 z-40 border-b border-zinc-200 bg-white/80 backdrop-blur">
+    <header class="sticky top-0 z-40 border-b border-zinc-700 bg-zinc-800/80 backdrop-blur">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
         <RouterLink to="/" class="flex items-center gap-2 font-bold text-lg tracking-tight">
-          <span class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-brand-700 text-white text-sm">E</span>
+          <span class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-600 text-white text-sm">E</span>
           <span>ETOJ</span>
         </RouterLink>
         <nav class="hidden md:flex items-center gap-1 text-sm">
-          <RouterLink to="/problems" class="px-3 py-1.5 rounded-md text-zinc-700 hover:bg-zinc-100">题目</RouterLink>
-          <RouterLink to="/submissions" class="px-3 py-1.5 rounded-md text-zinc-700 hover:bg-zinc-100">提交</RouterLink>
-          <RouterLink to="/rankings" class="px-3 py-1.5 rounded-md text-zinc-700 hover:bg-zinc-100">排行榜</RouterLink>
-          <RouterLink v-if="user && user.username === 'admin'" to="/admin" class="px-3 py-1.5 rounded-md text-zinc-700 hover:bg-zinc-100">后台</RouterLink>
+          <RouterLink to="/problems" class="px-3 py-1.5 rounded-md text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100">题目</RouterLink>
+          <RouterLink to="/submissions" class="px-3 py-1.5 rounded-md text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100">提交</RouterLink>
+          <RouterLink to="/rankings" class="px-3 py-1.5 rounded-md text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100">排行榜</RouterLink>
+          <RouterLink v-if="user && user.username === 'admin'" to="/admin" class="px-3 py-1.5 rounded-md text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100">后台</RouterLink>
         </nav>
         <div class="flex items-center gap-2">
           <template v-if="user">
-            <RouterLink to="/me" class="btn-ghost hidden sm:flex">
-              <span class="h-6 w-6 inline-flex items-center justify-center rounded-full bg-brand-100 text-brand-700 text-xs font-bold">{{ user.username[0].toUpperCase() }}</span>
+            <RouterLink to="/me" class="text-zinc-300 hover:text-zinc-100 hidden sm:flex items-center gap-2">
+              <span class="h-6 w-6 inline-flex items-center justify-center rounded-full bg-blue-900/50 text-blue-400 text-xs font-bold">{{ user.username[0].toUpperCase() }}</span>
               <span>{{ user.username }}</span>
             </RouterLink>
-            <button class="btn-outline" @click="logout">退出</button>
+            <button class="border border-zinc-600 hover:border-zinc-500 text-zinc-300 px-3 py-1.5 rounded-md text-sm transition-colors" @click="logout">退出</button>
           </template>
           <template v-else>
-            <RouterLink to="/login" class="btn-ghost">登录</RouterLink>
-            <RouterLink to="/register" class="btn-primary">注册</RouterLink>
+            <RouterLink to="/login" class="text-zinc-300 hover:text-zinc-100 px-3 py-1.5 rounded-md text-sm">登录</RouterLink>
+            <RouterLink to="/register" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm transition-colors">注册</RouterLink>
           </template>
         </div>
       </div>
@@ -62,12 +62,12 @@ onMounted(() => {
       </div>
     </main>
 
-    <footer class="border-t border-zinc-200 bg-white">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 py-6 text-xs text-zinc-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+    <footer class="border-t border-zinc-700 bg-zinc-800">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 py-6 text-xs text-zinc-400 flex flex-col sm:flex-row items-center justify-between gap-2">
         <span>© {{ new Date().getFullYear() }} ETOJ. 基于 Cloudflare Workers + GitHub Actions 构建。</span>
         <span class="flex items-center gap-4">
-          <a href="https://workers.cloudflare.com/" target="_blank" rel="noopener" class="hover:text-zinc-700">Cloudflare Workers</a>
-          <a href="https://github.com/features/actions" target="_blank" rel="noopener" class="hover:text-zinc-700">GitHub Actions</a>
+          <a href="https://workers.cloudflare.com/" target="_blank" rel="noopener" class="hover:text-zinc-300">Cloudflare Workers</a>
+          <a href="https://github.com/features/actions" target="_blank" rel="noopener" class="hover:text-zinc-300">GitHub Actions</a>
         </span>
       </div>
     </footer>

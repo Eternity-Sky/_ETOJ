@@ -4,6 +4,10 @@ export interface JudgePayload {
   userId: number;
   language: string;
   code: string;
+  testCases: Array<{input: string, output: string}>;
+  timeLimitMs: number;
+  memoryLimitMb: number;
+  startTime: number;
 }
 
 export async function triggerJudge(

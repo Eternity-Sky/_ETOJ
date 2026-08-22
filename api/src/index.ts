@@ -218,7 +218,7 @@ app.post("/api/submissions", authMiddleware, async (c) => {
     if (!problem) return c.json({ error: "Problem not found" }, 404);
 
     const insert = await c.env.DB.prepare(
-      `INSERT INTO submissions (user_id, problem_id, language, code, status) VALUES (?, ?, ?, ?, 'pending')`,
+      `INSERT INTO submissions (user_id, problem_id, language, code, status, created_at) VALUES (?, ?, ?, ?, 'pending', datetime('now'))`,
     )
       .bind(userId, problem.id, language, code)
       .run();
@@ -244,6 +244,7 @@ app.post("/api/submissions", authMiddleware, async (c) => {
       testCases: JSON.parse(problem.test_cases_json),
       timeLimitMs: problem.time_limit_ms,
       memoryLimitMb: problem.memory_limit_mb,
+      startTime: Date.now(),
     };
     
     try {
@@ -277,7 +278,7 @@ app.get("/api/submissions", authMiddleware, async (c) => {
   }
 
   const items = await c.env.DB.prepare(
-    `SELECT s.id, s.user_id, s.problem_id, s.language, s.status, s.result_json, s.run_time_ms, s.memory_kb, s.created_at, p.title as problem_title, p.slug as problem_slug, u.username as username FROM submissions s LEFT JOIN problems p ON s.problem_id = p.id LEFT JOIN users u ON s.user_id = u.id ${where} ORDER BY s.id DESC LIMIT ? OFFSET ?`,
+    `SELECT s.id, s.user_id, s.problem_id, s.language, s.status, s.result_json, s.run_time_ms, s.memory_kb, s.github_run_id, s.judge_latency_ms, s.created_at, p.title as problem_title, p.slug as problem_slug, u.username as username FROM submissions s LEFT JOIN problems p ON s.problem_id = p.id LEFT JOIN users u ON s.user_id = u.id ${where} ORDER BY s.id DESC LIMIT ? OFFSET ?`,
   )
     .bind(...params, pageSize, offset)
     .all();
@@ -291,9 +292,9 @@ app.get("/api/submissions", authMiddleware, async (c) => {
 
 async function applyJudgeResult(db: D1Database, data: any) {
   await db.prepare(
-    `UPDATE submissions SET status = ?, result_json = ?, run_time_ms = ?, memory_kb = ? WHERE id = ?`,
+    `UPDATE submissions SET status = ?, result_json = ?, run_time_ms = ?, memory_kb = ?, github_run_id = ?, judge_latency_ms = ? WHERE id = ?`,
   )
-    .bind(data.status, data.resultJson, data.runTimeMs, data.memoryKb, data.submissionId)
+    .bind(data.status, data.resultJson, data.runTimeMs, data.memoryKb, data.githubRunId || null, data.judgeLatencyMs || null, data.submissionId)
     .run();
   
   if (data.accepted) {
@@ -357,51 +358,119 @@ app.get("/api/submissions/:id", authMiddleware, async (c) => {
   return c.json(sub);
 });
 
+// 评测机健康状态检测端点
+app.get("/api/judge/health", async (c) => {
+  try {
+    const [owner, name] = c.env.GITHUB_REPO.split("/");
+    const url = `https://api.github.com/repos/${owner}/${name}/actions/runs?per_page=1`;
+    
+    const res = await fetch(url, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${c.env.GITHUB_TOKEN}`,
+        "User-Agent": "ETOJ-Judge-System",
+      },
+    });
+    
+    if (!res.ok) {
+      return c.json({ 
+        status: "error", 
+        message: "无法获取GitHub Actions状态",
+        latency: null 
+      }, 500);
+    }
+    
+    const data = await res.json();
+    const latestRun = data.workflow_runs?.[0];
+    
+    if (!latestRun) {
+      return c.json({ 
+        status: "unknown", 
+        message: "没有找到运行记录",
+        latency: null 
+      });
+    }
+    
+    // 计算延迟：从创建时间到现在
+    const now = Date.now();
+    const createdAt = new Date(latestRun.created_at).getTime();
+    const latency = now - createdAt;
+    
+    // 判断健康状态
+    let healthStatus = "healthy";
+    let healthMessage = "正常";
+    
+    if (latestRun.status === "queued") {
+      healthStatus = "queued";
+      healthMessage = "排队中";
+    } else if (latestRun.status === "in_progress") {
+      healthStatus = "running";
+      healthMessage = "运行中";
+    } else if (latestRun.status === "completed") {
+      if (latestRun.conclusion === "success") {
+        healthStatus = "healthy";
+        healthMessage = "正常";
+      } else {
+        healthStatus = "error";
+        healthMessage = "失败";
+      }
+    }
+    
+    return c.json({
+      status: healthStatus,
+      message: healthMessage,
+      latency: latency,
+      runId: latestRun.id,
+      runStatus: latestRun.status,
+      runConclusion: latestRun.conclusion,
+      createdAt: latestRun.created_at
+    });
+    
+  } catch (e: any) {
+    return c.json({ 
+      status: "error", 
+      message: e.message,
+      latency: null 
+    }, 500);
+  }
+});
+
+// GitHub Actions webhook接收端点（无需认证，由API_TOKEN验证）
 app.post("/api/webhooks/judge", async (c) => {
   try {
-    const {
+    const authHeader = c.req.header("Authorization");
+    const expectedToken = c.env.API_TOKEN;
+    
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      console.error("❌ Webhook缺少Authorization header");
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+    
+    const token = authHeader.substring(7); // Remove "Bearer " prefix
+    if (expectedToken && token !== expectedToken) {
+      console.error("❌ Webhook API_TOKEN不匹配");
+      return c.json({ error: "Invalid token" }, 401);
+    }
+    
+    const { submissionId, problemId, userId, status, resultJson, runTimeMs, memoryKb, accepted, githubRunId, judgeLatencyMs } = await c.req.json();
+    
+    await applyJudgeResult(c.env.DB, {
       submissionId,
+      problemId,
+      userId,
       status,
       resultJson,
       runTimeMs,
       memoryKb,
       accepted,
-      problemId,
-      userId,
-    } = await c.req.json();
-    await c.env.DB.prepare(
-      `UPDATE submissions SET status = ?, result_json = ?, run_time_ms = ?, memory_kb = ? WHERE id = ?`,
-    )
-      .bind(
-        status,
-        resultJson || null,
-        runTimeMs || null,
-        memoryKb || null,
-        submissionId,
-      )
-      .run();
-    if (accepted && problemId && userId) {
-      const exists: any = await c.env.DB.prepare(
-        `SELECT COUNT(*) as c FROM submissions WHERE user_id = ? AND problem_id = ? AND status = 'accepted'`,
-      )
-        .bind(userId, problemId)
-        .first();
-      if (exists && exists.c === 1) {
-        await c.env.DB.prepare(
-          `UPDATE users SET solved_count = solved_count + 1 WHERE id = ?`,
-        )
-          .bind(userId)
-          .run();
-        await c.env.DB.prepare(
-          `UPDATE problems SET accepted_count = accepted_count + 1 WHERE id = ?`,
-        )
-          .bind(problemId)
-          .run();
-      }
-    }
-    return c.json({ ok: true });
+      githubRunId,
+      judgeLatencyMs,
+    });
+    
+    return c.json({ success: true });
   } catch (e: any) {
-    return c.json({ error: e.message }, 400);
+    console.error("处理评测结果失败:", e.message);
+    return c.json({ error: e.message }, 500);
   }
 });
 
@@ -444,21 +513,32 @@ app.get("/api/admin/stats", async (c) => {
 app.post("/api/problems", authMiddleware, async (c) => {
   try {
     const userId = c.get("userId");
-    const { id, title, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json } = await c.req.json();
+    const { title, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json } = await c.req.json();
     
     if (!title || !description || !test_cases_json) {
       return c.json({ error: "Missing required fields" }, 400);
     }
     
-    // 如果提供了id则使用指定id，否则自动生成
-    const problemId = id ? Number(id) : Number((await c.env.DB.prepare("SELECT MAX(id) as max_id FROM problems").first()).max_id || 0) + 1;
+    // 自动生成题号：从1开始找到第一个可用的ID
+    let problemId = 1;
+    let foundAvailable = false;
     
-    const slug = `problem-${problemId}`;
+    while (!foundAvailable) {
+      const existing = await c.env.DB.prepare("SELECT id FROM problems WHERE id = ?").bind(problemId).first();
+      if (!existing) {
+        foundAvailable = true;
+      } else {
+        problemId++;
+      }
+    }
+    
+    // 生成唯一的slug
+    const slug = `problem-${problemId}-${Date.now()}`;
     
     const result = await c.env.DB.prepare(
       `INSERT INTO problems (id, title, slug, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-      .bind(problemId, title || "", slug || "", description || "", input_format || "", output_format || "", sample_input || "", sample_output || "", time_limit_ms || 1000, memory_limit_mb || 256, difficulty || "easy", test_cases_json || "[]")
+      .bind(problemId, title || "", slug, description || "", input_format || "", output_format || "", sample_input || "", sample_output || "", time_limit_ms || 1000, memory_limit_mb || 256, difficulty || "easy", test_cases_json || "[]")
       .run();
     
     if (!result.success) {

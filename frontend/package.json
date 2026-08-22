@@ -10,6 +10,8 @@
     "deploy": "npm run build && echo 'Deploy to Cloudflare Pages: npx wrangler pages deploy dist --project-name etoj-web'"
   },
   "dependencies": {
+    "katex": "^0.18.4",
+    "marked": "^18.0.10",
     "vue": "^3.4.0",
     "vue-router": "^4.3.0"
   },

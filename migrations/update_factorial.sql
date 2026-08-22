@@ -1,0 +1,1 @@
+UPDATE problems SET test_cases_json = '[{"input":"0","output":"1"},{"input":"1","output":"1"},{"input":"5","output":"120"},{"input":"10","output":"3628800"},{"input":"20","output":"146326063"}]' WHERE id = 5;

@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || "";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://api.csp.qzz.io";
 
 type Opt = Omit<RequestInit, "body"> & { body?: unknown };
 
@@ -9,7 +9,11 @@ async function request<T = any>(path: string, opts: Opt = {}): Promise<T> {
   };
   const token = localStorage.getItem("etoj_token");
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(API_BASE + path, {
+  
+  const url = API_BASE + path;
+  console.log(`API请求: ${url}`);
+  
+  const res = await fetch(url, {
     ...opts,
     headers,
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
@@ -25,6 +29,7 @@ async function request<T = any>(path: string, opts: Opt = {}): Promise<T> {
     const msg = data?.error || `HTTP ${res.status}`;
     throw new Error(msg);
   }
+  console.log(`API响应:`, data);
   return data as T;
 }
 
@@ -66,6 +71,8 @@ export type Problem = {
 
 export type Submission = {
   id: number;
+  user_id?: number;
+  username?: string;
   problem_id: number;
   problem_title?: string;
   problem_slug?: string;
@@ -74,6 +81,8 @@ export type Submission = {
   result_json?: string;
   run_time_ms?: number;
   memory_kb?: number;
+  github_run_id?: string;
+  judge_latency_ms?: number;
   created_at: string;
   code?: string;
   description?: string;
@@ -113,6 +122,18 @@ export const STATUS_COLOR: Record<SubmissionStatus, string> = {
   compile_error: "bg-red-100 text-red-700",
 };
 
+export const TEST_CASE_STATUS: Record<string, { label: string; color: string }> = {
+  AC: { label: "AC", color: "bg-emerald-500 text-white" },
+  WA: { label: "WA", color: "bg-rose-500 text-white" },
+  TLE: { label: "TLE", color: "bg-blue-600 text-white" },
+  MLE: { label: "MLE", color: "bg-blue-700 text-white" },
+  OLE: { label: "OLE", color: "bg-blue-800 text-white" },
+  RE: { label: "RE", color: "bg-purple-500 text-white" },
+  CE: { label: "CE", color: "bg-yellow-500 text-white" },
+  PC: { label: "PC", color: "bg-orange-500 text-white" },
+  UKE: { label: "UKE", color: "bg-zinc-600 text-white" },
+};
+
 export const DIFFICULTY_LABEL: Record<string, string> = {
   easy: "简单",
   medium: "中等",
@@ -126,11 +147,4 @@ export const DIFFICULTY_COLOR: Record<string, string> = {
 
 export const LANGUAGES = [
   { value: "cpp", label: "C++", ext: "cpp" },
-  { value: "c", label: "C", ext: "c" },
-  { value: "python3", label: "Python 3", ext: "py" },
-  { value: "java", label: "Java", ext: "java" },
-  { value: "javascript", label: "JavaScript", ext: "js" },
-  { value: "typescript", label: "TypeScript", ext: "ts" },
-  { value: "rust", label: "Rust", ext: "rs" },
-  { value: "go", label: "Go", ext: "go" },
 ];
