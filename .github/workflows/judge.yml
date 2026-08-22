@@ -65,10 +65,12 @@ jobs:
           if [ -f judge_output.txt ]; then
             JUDGE_OUTPUT=$(cat judge_output.txt)
           else
-            JUDGE_OUTPUT='{"status":"runtime_error","details":{"passed":false,"error":"No judge output"}}'
+            JUDGE_OUTPUT='{"status":"runtime_error","details":{"passed":false,"error":"No judge output file"}}'
           fi
           
           echo "Judge output: $JUDGE_OUTPUT"
+          echo "Compiler output: $COMPILER_OUTPUT"
+          
           node -e "
             const judgeOutput = process.env.JUDGE_OUTPUT || '{}';
             const compilerOutput = process.env.COMPILER_OUTPUT || '';
@@ -81,14 +83,32 @@ jobs:
               result = { status: 'runtime_error', details: { passed: false, error: 'Judge output parse error' } };
             }
             
+            // 如果result details中有真实的测试点信息，使用它
+            if (result.details && result.details.details && result.details.details.length > 0) {
+              // 使用真实的测试点信息
+              console.log('Using real test case details from judge output');
+            } else if (compilerOutput) {
+              // 尝试从compilerOutput中提取评测结果
+              const match = compilerOutput.match(/===JUDGE_RESULT===([\s\S]*?)$/);
+              if (match) {
+                try {
+                  const compilerResult = JSON.parse(match[1]);
+                  if (compilerResult.details && compilerResult.details.details) {
+                    result.details = compilerResult.details;
+                    result.status = compilerResult.status;
+                    result.runTimeMs = compilerResult.runTimeMs;
+                    result.memoryKb = compilerResult.memoryKb;
+                    console.log('Extracted result from compiler output');
+                  }
+                } catch (e) {
+                  console.error('Failed to parse compiler output:', e);
+                }
+              }
+            }
+            
             // 确保details字段存在
             if (!result.details) {
               result.details = { passed: false, details: [] };
-            }
-            
-            // 将编译器输出添加到 result.details 中
-            if (compilerOutput) {
-              result.details.compilerOutput = compilerOutput;
             }
             
             const body = {
