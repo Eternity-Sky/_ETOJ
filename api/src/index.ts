@@ -188,10 +188,10 @@ app.post("/api/problems", authMiddleware, adminMiddleware, async (c) => {
     `INSERT INTO problems (title, slug, difficulty, description, input_format, output_format, sample_input, sample_output, test_cases_json, time_limit_ms, memory_limit_mb) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
-      body.title,
-      body.slug,
+      body.title || "",
+      body.slug || "",
       body.difficulty || "easy",
-      body.description,
+      body.description || "",
       body.input_format || "",
       body.output_format || "",
       body.sample_input || "",
@@ -458,7 +458,7 @@ app.post("/api/problems", authMiddleware, async (c) => {
     const result = await c.env.DB.prepare(
       `INSERT INTO problems (id, title, slug, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-      .bind(problemId, title, slug, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json)
+      .bind(problemId, title || "", slug || "", description || "", input_format || "", output_format || "", sample_input || "", sample_output || "", time_limit_ms || 1000, memory_limit_mb || 256, difficulty || "easy", test_cases_json || "[]")
       .run();
     
     if (!result.success) {
@@ -480,7 +480,7 @@ app.put("/api/problems/:id", authMiddleware, async (c) => {
     const result = await c.env.DB.prepare(
       `UPDATE problems SET title = ?, description = ?, input_format = ?, output_format = ?, sample_input = ?, sample_output = ?, time_limit_ms = ?, memory_limit_mb = ?, difficulty = ?, test_cases_json = ? WHERE id = ?`,
     )
-      .bind(title, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json, id)
+      .bind(title || "", description || "", input_format || "", output_format || "", sample_input || "", sample_output || "", time_limit_ms || 1000, memory_limit_mb || 256, difficulty || "easy", test_cases_json || "[]", id)
       .run();
     
     if (!result.success) {
