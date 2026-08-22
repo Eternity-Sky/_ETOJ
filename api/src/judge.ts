@@ -62,8 +62,28 @@ async function pollGitHubResult(
   const [owner, name] = repo.split("/");
   const maxAttempts = 120; // 增加轮询次数到120次
   const interval = 1000; // 减少轮询间隔到1秒
+  const timeoutMs = 2 * 60 * 1000; // 2分钟超时
+  const startTime = Date.now();
   
   for (let i = 0; i < maxAttempts; i++) {
+    // 检查是否超时
+    if (Date.now() - startTime > timeoutMs) {
+      console.error(`评测超时: submissionId=${payload.submissionId}, 超过2分钟`);
+      // 更新数据库状态为system_error
+      await db.prepare(
+        `UPDATE submissions SET status = 'system_error', result_json = ?, judge_latency_ms = ? WHERE id = ?`,
+      ).bind(
+        JSON.stringify({
+          passed: false,
+          error: "评测超时",
+          details: []
+        }),
+        Date.now() - startTime,
+        payload.submissionId
+      ).run();
+      return;
+    }
+    
     try {
       await new Promise((resolve) => setTimeout(resolve, interval));
       
@@ -116,6 +136,18 @@ async function pollGitHubResult(
     }
   }
   
-  // 超时后直接返回
+  // 超时后设置为system_error
+  console.error(`评测超时: submissionId=${payload.submissionId}, 超过2分钟`);
+  await db.prepare(
+    `UPDATE submissions SET status = 'system_error', result_json = ?, judge_latency_ms = ? WHERE id = ?`,
+  ).bind(
+    JSON.stringify({
+      passed: false,
+      error: "评测超时",
+      details: []
+    }),
+    Date.now() - startTime,
+    payload.submissionId
+  ).run();
   return;
 }

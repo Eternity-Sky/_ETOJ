@@ -115,7 +115,8 @@ export type SubmissionStatus =
   | "time_limit_exceeded"
   | "memory_limit_exceeded"
   | "runtime_error"
-  | "compile_error";
+  | "compile_error"
+  | "system_error";
 
 export const STATUS_LABEL: Record<SubmissionStatus, string> = {
   pending: "等待评测",
@@ -126,6 +127,7 @@ export const STATUS_LABEL: Record<SubmissionStatus, string> = {
   memory_limit_exceeded: "内存超限",
   runtime_error: "运行错误",
   compile_error: "编译错误",
+  system_error: "系统错误",
 };
 
 export const STATUS_COLOR: Record<SubmissionStatus, string> = {
@@ -137,6 +139,7 @@ export const STATUS_COLOR: Record<SubmissionStatus, string> = {
   memory_limit_exceeded: "bg-orange-100 text-orange-700",
   runtime_error: "bg-fuchsia-100 text-fuchsia-700",
   compile_error: "bg-red-100 text-red-700",
+  system_error: "bg-gray-800 text-white",
 };
 
 export const TEST_CASE_STATUS: Record<string, { label: string; color: string }> = {
@@ -149,6 +152,7 @@ export const TEST_CASE_STATUS: Record<string, { label: string; color: string }> 
   CE: { label: "CE", color: "bg-yellow-500 text-white" },
   PC: { label: "PC", color: "bg-orange-500 text-white" },
   UKE: { label: "UKE", color: "bg-zinc-600 text-white" },
+  SE: { label: "SE", color: "bg-gray-800 text-white" },
 };
 
 export const DIFFICULTY_LABEL: Record<string, string> = {
