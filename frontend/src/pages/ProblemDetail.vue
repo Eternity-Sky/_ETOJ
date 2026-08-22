@@ -2,6 +2,9 @@
 import { RouterLink } from 'vue-router'
 import { ref, onMounted, computed, watch } from 'vue'
 import { api, type Problem, type SubmissionStatus, DIFFICULTY_COLOR, DIFFICULTY_LABEL, LANGUAGES, STATUS_COLOR, STATUS_LABEL } from '@/lib/api'
+import { useToast } from '@/lib/toast'
+
+const { success, error: toastError, info } = useToast()
 
 const props = defineProps<{ id: string }>()
 const problem = ref<Problem | null>(null)
@@ -37,20 +40,15 @@ async function load() {
     problem.value = await api.get(`/api/problems/${props.id}`)
     if (!code.value) code.value = templates[language.value] || ''
   } catch (e: any) {
-    alert('加载失败: ' + e.message)
+    toastError('加载失败: ' + e.message)
   } finally {
     loading.value = false
   }
 }
 
 async function submit() {
-  if (!code.value.trim()) return alert('请输入代码')
+  if (!code.value.trim()) return info('请输入代码')
   submitting.value = true
-  
-  console.log('=== 开始提交代码 ===')
-  console.log('题目ID:', props.id)
-  console.log('语言:', language.value)
-  console.log('代码长度:', code.value.length)
   
   try {
     const res = await api.post<any>('/api/submissions', {
@@ -59,16 +57,14 @@ async function submit() {
       code: code.value
     })
     
-    console.log('✅ 提交成功')
-    console.log('提交ID:', res.id)
-    console.log('初始状态:', res.status)
+    success('提交成功')
+    location.href = `/submission/${res.id}`
     
     // 跳转到当前提交详情页面
     location.href = `/submission/${res.id}`
     
   } catch (e: any) {
-    console.error('❌ 提交失败:', e.message)
-    alert(e.message)
+    toastError(e.message)
   } finally { submitting.value = false }
 }
 

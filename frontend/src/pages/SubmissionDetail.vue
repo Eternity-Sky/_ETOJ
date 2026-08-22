@@ -2,6 +2,9 @@
 import { RouterLink } from 'vue-router'
 import { ref, onMounted, computed } from 'vue'
 import { api, type Submission, STATUS_COLOR, STATUS_LABEL, LANGUAGES, TEST_CASE_STATUS } from '@/lib/api'
+import { useToast } from '@/lib/toast'
+
+const { success, error: toastError } = useToast()
 
 const props = defineProps<{ id: string }>()
 const sub = ref<Submission | null>(null)
@@ -14,16 +17,14 @@ const loading = ref(false)
 const judging = ref(false)
 
 async function retest() {
-  if (!confirm('确定要重新评测这条提交吗？')) return
-  
   try {
     const res = await api.post<any>('/api/submissions/retest', { submissionId: props.id })
     
-    alert('重测成功')
+    success('重测成功')
     // 重新加载当前提交记录
     load()
   } catch (e: any) {
-    alert('重测失败: ' + e.message)
+    toastError('重测失败: ' + e.message)
   }
 }
 

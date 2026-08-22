@@ -2,6 +2,7 @@
 import { RouterLink, RouterView } from 'vue-router'
 import { ref, onMounted } from 'vue'
 import { api, type User } from './lib/api'
+import ToastContainer from './components/ToastContainer.vue'
 
 const user = ref<User | null>(null)
 
@@ -26,6 +27,7 @@ onMounted(() => {
 
 <template>
   <div class="min-h-full flex flex-col">
+    <ToastContainer />
     <header class="sticky top-0 z-40 border-b border-zinc-200 bg-white/80 backdrop-blur">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
         <RouterLink to="/" class="flex items-center gap-2 font-bold text-lg tracking-tight">
@@ -36,6 +38,7 @@ onMounted(() => {
           <RouterLink to="/problems" class="px-3 py-1.5 rounded-md text-zinc-700 hover:bg-zinc-100">题目</RouterLink>
           <RouterLink to="/submissions" class="px-3 py-1.5 rounded-md text-zinc-700 hover:bg-zinc-100">提交</RouterLink>
           <RouterLink to="/rankings" class="px-3 py-1.5 rounded-md text-zinc-700 hover:bg-zinc-100">排行榜</RouterLink>
+          <RouterLink v-if="user && user.username === 'admin'" to="/admin" class="px-3 py-1.5 rounded-md text-zinc-700 hover:bg-zinc-100">后台</RouterLink>
         </nav>
         <div class="flex items-center gap-2">
           <template v-if="user">

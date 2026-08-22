@@ -9,6 +9,9 @@ import {
   DIFFICULTY_COLOR,
   DIFFICULTY_LABEL,
 } from "@/lib/api";
+import { useToast } from '@/lib/toast'
+
+const { success, error: toastError } = useToast()
 
 const items = ref<Submission[]>([]);
 const total = ref(0);
@@ -19,22 +22,13 @@ const loading = ref(false);
 const totalPages = computed(() => Math.ceil(total.value / pageSize));
 
 async function retest(submissionId: number) {
-  if (!confirm('确定要重新评测这条提交吗？')) return
-  
   try {
-    console.log('=== 开始重测提交 ===')
-    console.log('提交ID:', submissionId)
-    
     const res = await api.post<any>('/api/submissions/retest', { submissionId })
     
-    console.log('✅ 重测成功')
-    console.log('新的提交ID:', res.id)
-    
-    alert('重测成功，新提交ID: ' + res.id)
+    success('重测成功')
     load() // 刷新列表
   } catch (e: any) {
-    console.error('❌ 重测失败:', e.message)
-    alert('重测失败: ' + e.message)
+    toastError('重测失败: ' + e.message)
   }
 }
 
