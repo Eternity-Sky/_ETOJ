@@ -65,7 +65,22 @@ jobs:
           if [ -f judge_output.txt ]; then
             JUDGE_OUTPUT=$(cat judge_output.txt)
           else
-            JUDGE_OUTPUT='{"status":"runtime_error","details":{"passed":false,"error":"No judge output file"}}'
+            # 如果没有judge_output.txt，从编译器输出中提取结果
+            if [ -f judge_output.log ]; then
+              echo "Extracting from compiler output"
+              JUDGE_OUTPUT=$(node -e "
+                const fs = require('fs');
+                const output = fs.readFileSync('judge_output.log', 'utf8');
+                const match = output.match(/===JUDGE_RESULT===([\s\S]*?)$/);
+                if (match) {
+                  console.log(match[1].trim());
+                } else {
+                  console.log(JSON.stringify({status: 'compile_error', details: {passed: false, error: output}}));
+                }
+              ")
+            else
+              JUDGE_OUTPUT='{"status":"runtime_error","details":{"passed":false,"error":"No judge output file"}}'
+            fi
           fi
           
           echo "Judge output: $JUDGE_OUTPUT"

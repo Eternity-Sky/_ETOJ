@@ -70,6 +70,7 @@ async function runCase(input) {
 async function main() {
   await compile();
   if (compileStatus) {
+    console.error('编译错误:', compileStatus.msg);
     emit({
       status: 'compile_error',
       runTimeMs: 0, memoryKb: 0,
