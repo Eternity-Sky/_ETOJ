@@ -11,6 +11,7 @@ type Bindings = {
   GITHUB_TOKEN: string;
   GITHUB_REPO: string;
   CORS_ORIGIN: string;
+  API_TOKEN?: string;
 };
 
 type Variables = {
@@ -49,12 +50,12 @@ const authMiddleware = async (c: any, next: any) => {
       return c.json({ error: "Unauthorized" }, 401);
     }
     const token = authHeader.slice(7);
-    const payload: any = await verify(token, c.env.JWT_SECRET);
+    const payload: any = await verify(token, c.env.JWT_SECRET, "HS256");
     c.set("userId", Number(payload.sub));
     c.set("username", String(payload.username));
     c.set("role", String(payload.role));
     await next();
-  } catch {
+  } catch (e: any) {
     return c.json({ error: "Invalid token" }, 401);
   }
 };
@@ -152,8 +153,8 @@ app.get("/api/problems", async (c) => {
     params.push(difficulty);
   }
 
-  const problems = await c.env.DB.prepare(
-    `SELECT id, title, slug, difficulty, submission_count, accepted_count, created_at FROM problems ${where} ORDER BY id LIMIT ? OFFSET ?`,
+  const items = await c.env.DB.prepare(
+    `SELECT id, title, slug, difficulty, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, submission_count, accepted_count, created_at, test_cases_json FROM problems ${where} ORDER BY id LIMIT ? OFFSET ?`,
   )
     .bind(...params, pageSize, offset)
     .all();
@@ -163,19 +164,19 @@ app.get("/api/problems", async (c) => {
     .bind(...params)
     .first();
   return c.json({
-    items: problems.results,
+    items: items.results || [],
     total: total?.c ?? 0,
     page,
     pageSize,
   });
 });
 
-app.get("/api/problems/:slug", async (c) => {
-  const slug = c.req.param("slug");
+app.get("/api/problems/:id", async (c) => {
+  const id = Number(c.req.param("id"));
   const problem = await c.env.DB.prepare(
-    "SELECT id, title, slug, difficulty, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, submission_count, accepted_count, created_at FROM problems WHERE slug = ?",
+    "SELECT id, title, slug, difficulty, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, submission_count, accepted_count, created_at FROM problems WHERE id = ?",
   )
-    .bind(slug)
+    .bind(id)
     .first();
   if (!problem) return c.json({ error: "Not found" }, 404);
   return c.json(problem);
@@ -206,13 +207,13 @@ app.post("/api/problems", authMiddleware, adminMiddleware, async (c) => {
 app.post("/api/submissions", authMiddleware, async (c) => {
   try {
     const userId = c.get("userId");
-    const { problemSlug, language, code } = await c.req.json();
-    if (!problemSlug || !language || !code)
+    const { problemId, language, code } = await c.req.json();
+    if (!problemId || !language || !code)
       return c.json({ error: "Missing fields" }, 400);
     const problem: any = await c.env.DB.prepare(
-      "SELECT id, test_cases_json, time_limit_ms, memory_limit_mb FROM problems WHERE slug = ?",
+      "SELECT * FROM problems WHERE id = ?",
     )
-      .bind(problemSlug)
+      .bind(problemId)
       .first();
     if (!problem) return c.json({ error: "Problem not found" }, 404);
 
@@ -244,6 +245,7 @@ app.post("/api/submissions", authMiddleware, async (c) => {
       timeLimitMs: problem.time_limit_ms,
       memoryLimitMb: problem.memory_limit_mb,
     };
+    
     try {
       await triggerJudge(
         payload,
@@ -262,21 +264,20 @@ app.post("/api/submissions", authMiddleware, async (c) => {
 });
 
 app.get("/api/submissions", authMiddleware, async (c) => {
-  const userId = c.get("userId");
   const page = Number(c.req.query("page") || 1);
   const pageSize = Number(c.req.query("pageSize") || 20);
   const offset = (page - 1) * pageSize;
   const problemFilter = c.req.query("problemId");
 
-  let where = "WHERE s.user_id = ?";
-  const params: any[] = [userId];
+  let where = "";
+  const params: any[] = [];
   if (problemFilter) {
-    where += " AND s.problem_id = ?";
+    where = "WHERE s.problem_id = ?";
     params.push(problemFilter);
   }
 
   const items = await c.env.DB.prepare(
-    `SELECT s.id, s.problem_id, s.language, s.status, s.result_json, s.run_time_ms, s.memory_kb, s.created_at, p.title as problem_title, p.slug as problem_slug FROM submissions s LEFT JOIN problems p ON s.problem_id = p.id ${where} ORDER BY s.id DESC LIMIT ? OFFSET ?`,
+    `SELECT s.id, s.user_id, s.problem_id, s.language, s.status, s.result_json, s.run_time_ms, s.memory_kb, s.created_at, p.title as problem_title, p.slug as problem_slug, u.username as username FROM submissions s LEFT JOIN problems p ON s.problem_id = p.id LEFT JOIN users u ON s.user_id = u.id ${where} ORDER BY s.id DESC LIMIT ? OFFSET ?`,
   )
     .bind(...params, pageSize, offset)
     .all();
@@ -286,6 +287,78 @@ app.get("/api/submissions", authMiddleware, async (c) => {
     .bind(...params)
     .first();
   return c.json({ items: items.results, total: total?.c ?? 0, page, pageSize });
+});
+
+async function logDebug(db: D1Database, submissionId: number, message: string) {
+  try {
+    await db.prepare("INSERT INTO debug_logs (submission_id, message) VALUES (?, ?)")
+      .bind(submissionId, message)
+      .run();
+  } catch (e) {
+    console.error("Failed to log debug message:", e);
+  }
+}
+
+async function applyJudgeResult(db: D1Database, data: any) {
+  await db.prepare(
+    `UPDATE submissions SET status = ?, result_json = ?, run_time_ms = ?, memory_kb = ? WHERE id = ?`,
+  )
+    .bind(data.status, data.resultJson, data.runTimeMs, data.memoryKb, data.submissionId)
+    .run();
+  
+  if (data.accepted) {
+    await db.prepare(
+      `UPDATE problems SET accepted_count = accepted_count + 1 WHERE id = ?`,
+    ).bind(data.problemId).run();
+    await db.prepare(
+      `UPDATE users SET solved_count = solved_count + 1 WHERE id = ?`,
+    ).bind(data.userId).run();
+  }
+}
+
+// GitHub Actions webhook接收端点（无需认证，由API_TOKEN验证）
+app.post("/api/webhooks/judge", async (c) => {
+  try {
+    const authHeader = c.req.header("Authorization");
+    const expectedToken = c.env.API_TOKEN;
+    
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      console.error("❌ Webhook缺少Authorization header");
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+    
+    const token = authHeader.substring(7); // Remove "Bearer " prefix
+    if (expectedToken && token !== expectedToken) {
+      console.error("❌ Webhook API_TOKEN不匹配");
+      return c.json({ error: "Invalid token" }, 401);
+    }
+    
+    const { submissionId, problemId, userId, status, resultJson, runTimeMs, memoryKb, accepted } = await c.req.json();
+    
+    await applyJudgeResult(c.env.DB, {
+      submissionId,
+      problemId,
+      userId,
+      status,
+      resultJson,
+      runTimeMs,
+      memoryKb,
+      accepted,
+    });
+    
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error("处理评测结果失败:", e.message);
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+app.get("/api/submissions/:id/debug", authMiddleware, async (c) => {
+  const id = Number(c.req.param("id"));
+  const logs = await c.env.DB.prepare(
+    "SELECT message, created_at FROM debug_logs WHERE submission_id = ? ORDER BY created_at ASC"
+  ).bind(id).all();
+  return c.json(logs.results || []);
 });
 
 app.get("/api/submissions/:id", authMiddleware, async (c) => {
@@ -347,6 +420,200 @@ app.post("/api/webhooks/judge", async (c) => {
     return c.json({ ok: true });
   } catch (e: any) {
     return c.json({ error: e.message }, 400);
+  }
+});
+
+// 管理端点 - 清空提交记录（无需权限检查）
+app.post("/api/admin/clear-submissions", async (c) => {
+  try {
+    // 清空所有提交记录
+    const result = await c.env.DB.prepare("DELETE FROM submissions").run();
+    
+    // 重置用户提交计数
+    const userResult = await c.env.DB.prepare("UPDATE users SET submissions_count = 0, solved_count = 0").run();
+    
+    // 重置题目统计
+    const problemResult = await c.env.DB.prepare("UPDATE problems SET submission_count = 0, accepted_count = 0").run();
+    
+    return c.json({ success: true, message: "已清空所有提交记录" });
+  } catch (e: any) {
+    console.error("清空提交记录失败:", e);
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+app.get("/api/admin/stats", async (c) => {
+  try {
+    const submissions = await c.env.DB.prepare("SELECT COUNT(*) as c FROM submissions").first();
+    const users = await c.env.DB.prepare("SELECT COUNT(*) as c FROM users").first();
+    const problems = await c.env.DB.prepare("SELECT COUNT(*) as c FROM problems").first();
+    
+    return c.json({
+      submissions: submissions?.c || 0,
+      users: users?.c || 0,
+      problems: problems?.c || 0,
+    });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// 管理端点 - 创建题目
+app.post("/api/problems", authMiddleware, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const { id, title, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json } = await c.req.json();
+    
+    if (!title || !description || !test_cases_json) {
+      return c.json({ error: "Missing required fields" }, 400);
+    }
+    
+    // 如果提供了id则使用指定id，否则自动生成
+    const problemId = id ? Number(id) : Number((await c.env.DB.prepare("SELECT MAX(id) as max_id FROM problems").first()).max_id || 0) + 1;
+    
+    const slug = `problem-${problemId}`;
+    
+    const result = await c.env.DB.prepare(
+      `INSERT INTO problems (id, title, slug, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+      .bind(problemId, title, slug, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json)
+      .run();
+    
+    if (!result.success) {
+      return c.json({ error: "Failed to create problem" }, 400);
+    }
+    
+    return c.json({ id: problemId, message: "题目创建成功" });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// 管理端点 - 更新题目
+app.put("/api/problems/:id", authMiddleware, async (c) => {
+  try {
+    const id = Number(c.req.param("id"));
+    const { title, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json } = await c.req.json();
+    
+    const result = await c.env.DB.prepare(
+      `UPDATE problems SET title = ?, description = ?, input_format = ?, output_format = ?, sample_input = ?, sample_output = ?, time_limit_ms = ?, memory_limit_mb = ?, difficulty = ?, test_cases_json = ? WHERE id = ?`,
+    )
+      .bind(title, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json, id)
+      .run();
+    
+    if (!result.success) {
+      return c.json({ error: "Failed to update problem" }, 400);
+    }
+    
+    return c.json({ message: "题目更新成功" });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// 管理端点 - 删除题目
+app.delete("/api/problems/:id", authMiddleware, async (c) => {
+  try {
+    const id = Number(c.req.param("id"));
+    
+    // 先删除相关的提交记录
+    await c.env.DB.prepare("DELETE FROM submissions WHERE problem_id = ?").bind(id).run();
+    
+    // 删除题目
+    const result = await c.env.DB.prepare("DELETE FROM problems WHERE id = ?").bind(id).run();
+    
+    if (!result.success) {
+      return c.json({ error: "Failed to delete problem" }, 400);
+    }
+    
+    return c.json({ message: "题目删除成功" });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// 重测端点
+app.post("/api/submissions/retest", authMiddleware, async (c) => {
+  try {
+    const { submissionId } = await c.req.json();
+    const userId = c.get("userId");
+    
+    if (!submissionId) {
+      return c.json({ error: "Missing submissionId" }, 400);
+    }
+    
+    // 获取原提交信息
+    const originalSubmission: any = await c.env.DB.prepare(
+      "SELECT * FROM submissions WHERE id = ?"
+    )
+      .bind(submissionId)
+      .first();
+    
+    if (!originalSubmission) {
+      return c.json({ error: "Submission not found" }, 404);
+    }
+    
+    // 权限检查：只能重测自己的提交，或者是管理员
+    if (originalSubmission.user_id !== userId) {
+      const user: any = await c.env.DB.prepare("SELECT role FROM users WHERE id = ?")
+        .bind(userId)
+        .first();
+      if (user.role !== "admin") {
+        return c.json({ error: "Forbidden" }, 403);
+      }
+    }
+    
+    // 获取题目信息
+    const problem: any = await c.env.DB.prepare(
+      "SELECT id, test_cases_json, time_limit_ms, memory_limit_mb FROM problems WHERE id = ?",
+    )
+      .bind(originalSubmission.problem_id)
+      .first();
+    
+    if (!problem) {
+      return c.json({ error: "Problem not found" }, 404);
+    }
+    
+    // 创建新的提交记录
+    const result = await c.env.DB.prepare(
+      `INSERT INTO submissions (user_id, problem_id, language, code, status) VALUES (?, ?, ?, ?, ?)`,
+    )
+      .bind(
+        originalSubmission.user_id,
+        originalSubmission.problem_id,
+        originalSubmission.language,
+        originalSubmission.code,
+        "pending",
+      )
+      .run();
+    
+    if (!result.success) {
+      return c.json({ error: "Failed to create retest submission" }, 400);
+    }
+    
+    const newSubmissionId = result.meta.last_row_id;
+    
+    // 触发评测
+    const payload = {
+      submissionId: newSubmissionId,
+      problemId: originalSubmission.problem_id,
+      userId: originalSubmission.user_id,
+      language: originalSubmission.language,
+      code: originalSubmission.code,
+    };
+    
+    await triggerJudge(
+      payload,
+      c.env.GITHUB_TOKEN,
+      c.env.GITHUB_REPO,
+      (p: Promise<any>) => c.executionCtx.waitUntil(p),
+      c.env.DB,
+    );
+    
+    return c.json({ id: newSubmissionId, message: "重测成功" });
+  } catch (e: any) {
+    console.error("重测失败:", e.message);
+    return c.json({ error: e.message }, 500);
   }
 });
 

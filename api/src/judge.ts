@@ -1,15 +1,10 @@
-import type { D1Database } from "@cloudflare/workers-types";
-
-export type JudgePayload = {
+export interface JudgePayload {
   submissionId: number;
   problemId: number;
   userId: number;
   language: string;
   code: string;
-  testCases: { input: string; output: string }[];
-  timeLimitMs: number;
-  memoryLimitMb: number;
-};
+}
 
 export async function triggerJudge(
   payload: JudgePayload,
@@ -24,130 +19,117 @@ export async function triggerJudge(
     !repo ||
     repo.includes("your-github")
   ) {
-    console.warn(
-      "[JUDGE] GitHub not configured - using built-in simulated judge (no network).",
-    );
-    waitUntil(simulateInProcess(payload, db));
+    const msg = "❌ GitHub 未正确配置，无法触发评测";
+    await logDebug(db, payload.submissionId, msg);
+    console.error(msg);
     return;
   }
 
   const [owner, name] = repo.split("/");
   const url = `https://api.github.com/repos/${owner}/${name}/dispatches`;
+  
   const res = await fetch(url, {
     method: "POST",
     headers: {
       Accept: "application/vnd.github+json",
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "User-Agent": "ETOJ-Judge-System",
     },
     body: JSON.stringify({
       event_type: "judge-submission",
       client_payload: payload,
     }),
   });
+  
   if (!res.ok) {
     const txt = await res.text();
+    const msg = `❌ GitHub dispatch 失败: ${res.status} ${txt}`;
+    await logDebug(db, payload.submissionId, msg);
+    console.error(msg);
     throw new Error(`GitHub dispatch failed: ${res.status} ${txt}`);
   }
+  
+  // 启动轮询任务获取结果
+  waitUntil(pollGitHubResult(payload, token, repo, db));
 }
 
-async function simulateInProcess(payload: JudgePayload, db: D1Database) {
-  try {
-    await new Promise((r) => setTimeout(r, 600));
-    const r = fakeJudge(payload);
-    await applyJudgeResult(db, {
-      submissionId: r.submissionId,
-      problemId: r.problemId,
-      userId: payload.userId,
-      status: r.status,
-      resultJson: r.resultJson,
-      runTimeMs: r.runTimeMs,
-      memoryKb: r.memoryKb,
-      accepted: r.accepted,
-    });
-  } catch (e: any) {
-    console.error("[JUDGE] sim failed:", e);
-  }
-}
-
-export async function applyJudgeResult(
+async function pollGitHubResult(
+  payload: JudgePayload,
+  token: string,
+  repo: string,
   db: D1Database,
-  r: {
-    submissionId: number;
-    problemId: number;
-    userId: number;
-    status: string;
-    resultJson?: string;
-    runTimeMs?: number;
-    memoryKb?: number;
-    accepted: boolean;
-  },
-) {
-  await db
-    .prepare(
-      `UPDATE submissions SET status = ?, result_json = ?, run_time_ms = ?, memory_kb = ? WHERE id = ?`,
-    )
-    .bind(
-      r.status,
-      r.resultJson || null,
-      r.runTimeMs ?? null,
-      r.memoryKb ?? null,
-      r.submissionId,
-    )
-    .run();
-  if (r.accepted) {
-    const exists: any = await db
-      .prepare(
-        `SELECT COUNT(*) as c FROM submissions WHERE user_id = ? AND problem_id = ? AND status = 'accepted'`,
-      )
-      .bind(r.userId, r.problemId)
-      .first();
-    if (exists && exists.c === 1) {
-      await db
-        .prepare(
-          `UPDATE users SET solved_count = solved_count + 1 WHERE id = ?`,
-        )
-        .bind(r.userId)
-        .run();
-      await db
-        .prepare(
-          `UPDATE problems SET accepted_count = accepted_count + 1 WHERE id = ?`,
-        )
-        .bind(r.problemId)
-        .run();
+): Promise<void> {
+  const [owner, name] = repo.split("/");
+  const maxAttempts = 60; // 最多轮询60次
+  const interval = 2000; // 每2秒轮询一次
+  
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      await new Promise((resolve) => setTimeout(resolve, interval));
+      
+      // 获取最新的 workflow 运行（不限制event类型，获取所有最新的）
+      const runsUrl = `https://api.github.com/repos/${owner}/${name}/actions/runs?per_page=5`;
+      
+      const runsRes = await fetch(runsUrl, {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "User-Agent": "ETOJ-Judge-System",
+        },
+      });
+      
+      if (!runsRes.ok) {
+        const errorText = await runsRes.text();
+        await logDebug(db, payload.submissionId, `获取 workflow 运行失败: ${errorText}`);
+        continue;
+      }
+      
+      const runsData = await runsRes.json();
+      
+      if (!runsData.workflow_runs || runsData.workflow_runs.length === 0) {
+        continue;
+      }
+      
+      // 直接获取最新的 repository_dispatch 运行
+      const run = runsData.workflow_runs.find((r: any) => r.event === "repository_dispatch");
+      
+      if (!run) {
+        continue;
+      }
+      
+      // 只要状态是completed就认为评测完成
+      // 结果会通过webhook单独推送，这里只是等待状态
+      if (run.status === "completed") {
+        return;
+      }
+      
+      // 如果还在运行，继续等待
+      if (run.status === "in_progress" || run.status === "queued") {
+        continue;
+      }
+      
+      // 如果失败，直接返回错误
+      await logDebug(db, payload.submissionId, `Workflow 执行失败: ${run.conclusion}`);
+      return;
+      
+    } catch (e: any) {
+      await logDebug(db, payload.submissionId, `检查错误: ${e.message}`);
+      // 继续尝试
     }
   }
+  
+  // 超时后直接返回
+  await logDebug(db, payload.submissionId, "超时，无法获取评测结果");
+  return;
 }
 
-function fakeJudge(payload: JudgePayload) {
-  const seed = payload.code.length + payload.submissionId;
-  const passAll = seed % 3 !== 0;
-  const details: any[] = payload.testCases.map((tc, i) => {
-    const pass =
-      passAll || i < Math.max(1, Math.floor(payload.testCases.length / 2));
-    return {
-      index: i,
-      passed: pass,
-      timeMs: 10 + ((seed + i) % 80),
-      memoryKb: 2000 + ((seed * 3 + i) % 5000),
-      expected: pass ? undefined : tc.output,
-      actual: pass ? undefined : `${tc.output}_wrong`,
-    };
-  });
-  const allPassed = details.every((d) => d.passed);
-  const totalTime = details.reduce((s, d) => s + d.timeMs, 0);
-  const maxMem = Math.max(...details.map((d) => d.memoryKb));
-  return {
-    submissionId: payload.submissionId,
-    problemId: payload.problemId,
-    status: allPassed
-      ? "accepted"
-      : seed % 5 === 0
-        ? "time_limit_exceeded"
-        : "wrong_answer",
-    resultJson: JSON.stringify({ passed: allPassed, details }),
-    runTimeMs: totalTime,
-    memoryKb: maxMem,
-    accepted: allPassed,
-  };
+async function logDebug(db: D1Database, submissionId: number, message: string) {
+  try {
+    await db.prepare("INSERT INTO debug_logs (submission_id, message) VALUES (?, ?)")
+      .bind(submissionId, message)
+      .run();
+  } catch (e) {
+    console.error("Failed to log debug message:", e);
+  }
 }

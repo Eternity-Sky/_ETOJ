@@ -68,16 +68,6 @@ jobs:
         run: node .github/scripts/judge.js submission.json
         continue-on-error: true
 
-      - name: Show judge output
-        if: always()
-        run: |
-          echo "=== Judge Output ==="
-          if [ -f judge_output.txt ]; then
-            cat judge_output.txt
-          else
-            echo "No judge output file found"
-          fi
-
       - name: Upload result to API
         if: always() # 无论评测成功还是失败都执行
         env:
