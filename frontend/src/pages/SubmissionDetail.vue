@@ -117,11 +117,17 @@ async function load() {
     const submission = await api.get(`/api/submissions/${props.id}`)
     
     sub.value = submission
-    cases.value = parsedResult.value?.details || []
     
-    // 如果有测试点详情，优先使用测试点详情
-    if (parsedResult.value?.details && parsedResult.value.details.details) {
-      cases.value = parsedResult.value.details.details
+    // 解析结果JSON并提取测试用例
+    const result = parsedResult.value
+    if (result?.details?.details && Array.isArray(result.details.details)) {
+      // 优先使用 details.details
+      cases.value = result.details.details
+    } else if (result?.details && Array.isArray(result.details)) {
+      // 如果 details 直接是数组
+      cases.value = result.details
+    } else {
+      cases.value = []
     }
     
     // 如果状态是pending或judging，开始轮询
@@ -154,7 +160,16 @@ function startPoll() {
       const submission = await api.get(`/api/submissions/${props.id}`)
       
       sub.value = submission
-      cases.value = parsedResult.value?.details || []
+      
+      // 使用与load相同的逻辑提取测试用例
+      const result = parsedResult.value
+      if (result?.details?.details && Array.isArray(result.details.details)) {
+        cases.value = result.details.details
+      } else if (result?.details && Array.isArray(result.details)) {
+        cases.value = result.details
+      } else {
+        cases.value = []
+      }
       
       if (submission.status !== 'pending' && submission.status !== 'judging') {
         judging.value = false
