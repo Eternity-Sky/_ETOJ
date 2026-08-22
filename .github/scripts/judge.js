@@ -4,7 +4,7 @@ const os = require('os');
 const { execFileSync, spawn } = require('child_process');
 
 const payload = JSON.parse(fs.readFileSync(process.argv[2] || 'submission.json', 'utf-8'));
-const { language, code, testCases, timeLimitMs = 1000, memoryLimitMb = 256, submissionId, problemId } = payload;
+const { language, code, testCases = [], timeLimitMs = 1000, memoryLimitMb = 256, submissionId, problemId } = payload;
 
 const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'etoj-'));
 
