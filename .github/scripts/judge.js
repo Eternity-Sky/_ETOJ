@@ -26,32 +26,40 @@ function norm(s) {
 
 async function compile() {
   try {
+    console.log(`=== 开始编译 ${language} ===`);
     switch (language) {
       case 'c':
         execFileSync('gcc', ['-O2', '-o', 'solution', 'solution.c'], { cwd: workdir, timeout: 10000, stdio: 'pipe' });
         runCmd = [path.join(workdir, 'solution')];
+        console.log('C 编译成功');
         break;
       case 'cpp':
         execFileSync('g++', ['-O2', '-std=c++17', '-o', 'solution', 'solution.cpp'], { cwd: workdir, timeout: 15000, stdio: 'pipe' });
         runCmd = [path.join(workdir, 'solution')];
+        console.log('C++ 编译成功');
         break;
       case 'rust':
         execFileSync('rustc', ['-O', '-o', 'solution', 'solution.rs'], { cwd: workdir, timeout: 30000, stdio: 'pipe' });
         runCmd = [path.join(workdir, 'solution')];
+        console.log('Rust 编译成功');
         break;
       case 'go':
         execFileSync('go', ['build', '-o', 'solution', 'solution.go'], { cwd: workdir, timeout: 30000, stdio: 'pipe' });
         runCmd = [path.join(workdir, 'solution')];
+        console.log('Go 编译成功');
         break;
       case 'java':
         execFileSync('javac', ['Main.java'], { cwd: workdir, timeout: 15000, stdio: 'pipe' });
         runCmd = ['java', '-Xmx' + memoryLimitMb + 'm', '-cp', workdir, 'Main'];
+        console.log('Java 编译成功');
         break;
       case 'python3':
         runCmd = ['python3', srcPath];
+        console.log('Python3 无需编译');
         break;
       case 'javascript':
         runCmd = ['node', srcPath];
+        console.log('JavaScript 无需编译');
         break;
       case 'typescript':
         const jsPath = path.join(workdir, 'solution.js');
@@ -61,6 +69,7 @@ async function compile() {
           const out = ts.transpileModule(code, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } });
           fs.writeFileSync(jsPath, out.outputText);
           runCmd = ['node', jsPath];
+          console.log('TypeScript 编译成功');
         } else {
           compileStatus = { status: 'compile_error', msg: 'TypeScript compiler not available' };
         }
@@ -69,7 +78,16 @@ async function compile() {
         compileStatus = { status: 'compile_error', msg: `Unsupported language: ${language}` };
     }
   } catch (e: any) {
-    compileStatus = { status: 'compile_error', msg: e.stderr?.toString?.() || e.message };
+    // 更详细的编译错误信息捕获
+    let errorMsg = e.message || 'Unknown compilation error';
+    if (e.stderr) {
+      errorMsg = e.stderr.toString();
+    } else if (e.stdout) {
+      errorMsg = e.stdout.toString();
+    }
+    console.error('=== 编译失败 ===');
+    console.error('错误信息:', errorMsg);
+    compileStatus = { status: 'compile_error', msg: errorMsg };
   }
 }
 
@@ -163,6 +181,10 @@ function emit(obj: any) {
     details: obj.details,
     accepted: obj.status === 'accepted'
   };
+  
+  // 输出到文件以便 GitHub Actions 显示
+  fs.writeFileSync('judge_output.txt', JSON.stringify(out, null, 2));
+  
   // For GitHub Actions output
   if (process.env.GITHUB_OUTPUT) {
     fs.appendFileSync(process.env.GITHUB_OUTPUT, 'result=' + JSON.stringify(out).replace(/\n/g, '%0A') + '\n');
