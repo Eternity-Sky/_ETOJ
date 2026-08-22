@@ -50,7 +50,7 @@ function getTestCaseInfo(c: any, i: number) {
     config,
     passed: c.passed,
     timeMs: c.timeMs,
-    memoryKb: c.memoryKb,
+    memoryKb: c.memoryKb || 0,
     expected: c.expected,
     actual: c.actual
   }
@@ -117,6 +117,12 @@ async function load() {
       startPoll()
     } else {
       judging.value = false
+    }
+    
+    // 如果有编译错误，停止轮询
+    if (submission.status === 'compile_error') {
+      judging.value = false
+      clearInterval(pollTimer.value)
     }
   } catch (e: any) {
     if (e.message === 'Forbidden' || e.message.includes('403')) {
@@ -255,6 +261,9 @@ onMounted(() => {
               <div class="text-sm font-bold mt-1">{{ getTestCaseInfo(c, i).config.label }}</div>
               <div v-if="c.passed && c.timeMs" class="text-xs mt-1 opacity-90">
                 {{ c.timeMs }}ms/{{ (c.memoryKb/1024).toFixed(0) }}KB
+              </div>
+              <div v-else-if="c.passed" class="text-xs mt-1 opacity-90">
+                {{ c.timeMs }}ms/0KB
               </div>
             </div>
           </div>

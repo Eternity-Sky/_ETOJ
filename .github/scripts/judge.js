@@ -58,11 +58,7 @@ async function runCase(input) {
     child.on('error', e => { clearTimeout(t); resolve({ output, timeMs: Date.now() - start, memoryKb: 0, timedOut, error: e.message }); });
     child.on('close', (code) => {
       clearTimeout(t);
-      let mem = 0;
-      try {
-        const pidUsage = require.resolve('pidusage', { paths: [process.cwd(), __dirname] });
-      } catch {}
-      resolve({ output, timeMs: Date.now() - start, memoryKb: mem, timedOut, error: code !== 0 && !timedOut ? (error || `exit ${code}`) : undefined });
+      resolve({ output, timeMs: Date.now() - start, memoryKb: 0, timedOut, error: code !== 0 && !timedOut ? (error || `exit ${code}`) : undefined });
     });
     try {
       child.stdin.write(input);
@@ -77,7 +73,7 @@ async function main() {
     emit({
       status: 'compile_error',
       runTimeMs: 0, memoryKb: 0,
-      details: { passed: false, error: compileStatus.msg, details: testCases.map((_, i) => ({ index: i, passed: false })) }
+      details: { passed: false, error: compileStatus.msg, details: [] }
     });
     return;
   }
