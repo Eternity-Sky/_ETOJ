@@ -116,11 +116,9 @@ jobs:
             
             // 如果result details中有真实的测试点信息，使用它
             if (result.details && result.details.details && result.details.details.length > 0) {
-              // 使用真实的测试点信息
               console.log('Using real test case details from judge output');
             } else if (compilerOutput) {
-              // 尝试从compilerOutput中提取评测结果
-              const match = compilerOutput.match(/===JUDGE_RESULT===([\s\S]*?)$/);
+              const match = compilerOutput.match(/===JUDGE_RESULT===([\\s\\S]*?)$/);
               if (match) {
                 try {
                   const compilerResult = JSON.parse(match[1]);
@@ -137,27 +135,20 @@ jobs:
               }
             }
             
-            // 确保details字段存在
             if (!result.details) {
               result.details = { passed: false, details: [] };
             }
             
-            // 清理错误信息中的特殊字符，替换为安全的ASCII字符
             if (result.details.error) {
-              // 简化处理：如果错误信息太长或包含特殊字符，截断并简化
               let errorText = result.details.error;
+              errorText = errorText.replace(/[\\u2018\\u2019]/g, \"'\");
+              errorText = errorText.replace(/[\\u201C\\u201D]/g, '\"');
+              errorText = errorText.replace(/[\\u2013\\u2014]/g, '-');
+              errorText = errorText.replace(/[\\u2026]/g, '...');
+              errorText = errorText.replace(/[\\u2192]/g, '->');
+              errorText = errorText.replace(/[\\u00D7]/g, 'x');
+              errorText = errorText.replace(/[\\u00F7]/g, '/');
               
-              // 替换常见Unicode字符为ASCII
-              errorText = errorText
-                .replace(/[‘’]/g, "'")  // 替换Unicode引号为ASCII引号
-                .replace(/[”“]/g, '"')  // 替换Unicode双引号为ASCII双引号
-                .replace(/[–—]/g, '-')   // 替换Unicode破折号为ASCII破折号
-                .replace(/[…]/g, '...') // 替换Unicode省略号为ASCII省略号
-                .replace(/→/g, '->')    // 替换Unicode箭头为ASCII箭头
-                .replace(/×/g, 'x')     // 替换Unicode乘号为ASCII乘号
-                .replace(/÷/g, '/');   // 替换Unicode除号为ASCII除号
-              
-              // 如果错误信息过长，截断
               if (errorText.length > 500) {
                 errorText = errorText.substring(0, 500) + '... (error truncated)';
               }
@@ -178,7 +169,6 @@ jobs:
               judgeLatencyMs: Number(judgeLatencyMs)
             };
             
-            // 确保 resultJson 是有效的 JSON
             try {
               JSON.parse(body.resultJson);
             } catch (e) {
