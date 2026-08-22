@@ -19,9 +19,7 @@ export async function triggerJudge(
     !repo ||
     repo.includes("your-github")
   ) {
-    const msg = "❌ GitHub 未正确配置，无法触发评测";
-    await logDebug(db, payload.submissionId, msg);
-    console.error(msg);
+    console.error("❌ GitHub 未正确配置，无法触发评测");
     return;
   }
 
@@ -44,9 +42,7 @@ export async function triggerJudge(
   
   if (!res.ok) {
     const txt = await res.text();
-    const msg = `❌ GitHub dispatch 失败: ${res.status} ${txt}`;
-    await logDebug(db, payload.submissionId, msg);
-    console.error(msg);
+    console.error(`❌ GitHub dispatch 失败: ${res.status} ${txt}`);
     throw new Error(`GitHub dispatch failed: ${res.status} ${txt}`);
   }
   
@@ -80,8 +76,6 @@ async function pollGitHubResult(
       });
       
       if (!runsRes.ok) {
-        const errorText = await runsRes.text();
-        await logDebug(db, payload.submissionId, `获取 workflow 运行失败: ${errorText}`);
         continue;
       }
       
@@ -110,26 +104,13 @@ async function pollGitHubResult(
       }
       
       // 如果失败，直接返回错误
-      await logDebug(db, payload.submissionId, `Workflow 执行失败: ${run.conclusion}`);
       return;
       
     } catch (e: any) {
-      await logDebug(db, payload.submissionId, `检查错误: ${e.message}`);
       // 继续尝试
     }
   }
   
   // 超时后直接返回
-  await logDebug(db, payload.submissionId, "超时，无法获取评测结果");
   return;
-}
-
-async function logDebug(db: D1Database, submissionId: number, message: string) {
-  try {
-    await db.prepare("INSERT INTO debug_logs (submission_id, message) VALUES (?, ?)")
-      .bind(submissionId, message)
-      .run();
-  } catch (e) {
-    console.error("Failed to log debug message:", e);
-  }
 }

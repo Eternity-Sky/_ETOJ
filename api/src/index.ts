@@ -289,16 +289,6 @@ app.get("/api/submissions", authMiddleware, async (c) => {
   return c.json({ items: items.results, total: total?.c ?? 0, page, pageSize });
 });
 
-async function logDebug(db: D1Database, submissionId: number, message: string) {
-  try {
-    await db.prepare("INSERT INTO debug_logs (submission_id, message) VALUES (?, ?)")
-      .bind(submissionId, message)
-      .run();
-  } catch (e) {
-    console.error("Failed to log debug message:", e);
-  }
-}
-
 async function applyJudgeResult(db: D1Database, data: any) {
   await db.prepare(
     `UPDATE submissions SET status = ?, result_json = ?, run_time_ms = ?, memory_kb = ? WHERE id = ?`,
@@ -351,14 +341,6 @@ app.post("/api/webhooks/judge", async (c) => {
     console.error("处理评测结果失败:", e.message);
     return c.json({ error: e.message }, 500);
   }
-});
-
-app.get("/api/submissions/:id/debug", authMiddleware, async (c) => {
-  const id = Number(c.req.param("id"));
-  const logs = await c.env.DB.prepare(
-    "SELECT message, created_at FROM debug_logs WHERE submission_id = ? ORDER BY created_at ASC"
-  ).bind(id).all();
-  return c.json(logs.results || []);
 });
 
 app.get("/api/submissions/:id", authMiddleware, async (c) => {
