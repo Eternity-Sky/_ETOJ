@@ -142,13 +142,27 @@ jobs:
               result.details = { passed: false, details: [] };
             }
             
-            // 清理错误信息中的特殊字符
+            // 清理错误信息中的特殊字符，替换为安全的ASCII字符
             if (result.details.error) {
-              result.details.error = result.details.error
-                .replace(/\\\\/g, '\\\\')
-                .replace(/\"/g, '\\\"')
-                .replace(/\\n/g, '\\\\n')
-                .replace(/\\t/g, '\\\\t');
+              // 简化处理：如果错误信息太长或包含特殊字符，截断并简化
+              let errorText = result.details.error;
+              
+              // 替换常见Unicode字符为ASCII
+              errorText = errorText
+                .replace(/[‘’]/g, "'")  // 替换Unicode引号为ASCII引号
+                .replace(/[”“]/g, '"')  // 替换Unicode双引号为ASCII双引号
+                .replace(/[–—]/g, '-')   // 替换Unicode破折号为ASCII破折号
+                .replace(/[…]/g, '...') // 替换Unicode省略号为ASCII省略号
+                .replace(/→/g, '->')    // 替换Unicode箭头为ASCII箭头
+                .replace(/×/g, 'x')     // 替换Unicode乘号为ASCII乘号
+                .replace(/÷/g, '/');   // 替换Unicode除号为ASCII除号
+              
+              // 如果错误信息过长，截断
+              if (errorText.length > 500) {
+                errorText = errorText.substring(0, 500) + '... (error truncated)';
+              }
+              
+              result.details.error = errorText;
             }
             
             const body = {
