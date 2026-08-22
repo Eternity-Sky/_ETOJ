@@ -23,7 +23,10 @@ async function load() {
   try {
     let q = `/api/problems?page=${page.value}&pageSize=${pageSize}`;
     if (difficulty.value) q += `&difficulty=${difficulty.value}`;
+    
     const res = await api.get<any>(q);
+    
+    console.log(`API响应:`, res);
     let list: Problem[] = res.items || [];
     if (keyword.value) {
       const k = keyword.value.toLowerCase();
@@ -31,8 +34,11 @@ async function load() {
         (p) => p.title.toLowerCase().includes(k) || p.slug.includes(k),
       );
     }
+    
     items.value = list;
     total.value = keyword.value ? list.length : res.total || 0;
+  } catch (e: any) {
+    console.error('加载失败:', e);
   } finally {
     loading.value = false;
   }
@@ -47,6 +53,11 @@ onMounted(load);
       class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
     >
       <h1 class="text-2xl font-bold">题目列表</h1>
+      
+      <div v-if="loading" class="flex items-center gap-2 text-sm text-zinc-500">
+        <div class="w-4 h-4 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
+        <span>加载中...</span>
+      </div>
       <div class="flex flex-wrap items-center gap-2">
         <input
           v-model="keyword"
@@ -99,7 +110,7 @@ onMounted(load);
               {{ p.id }}
             </td>
             <td class="px-4 py-3">
-              <RouterLink :to="`/problem/${p.slug}`" class="link font-medium">{{
+              <RouterLink :to="`/problem/${p.id}`" class="link font-medium">{{
                 p.title
               }}</RouterLink>
             </td>

@@ -10,6 +10,8 @@ const error = ref<string | null>(null)
 const forbidden = ref(false)
 const pollTimer = ref<any>(null)
 const selectedCase = ref<number | null>(null)
+const loading = ref(false)
+const judging = ref(false)
 
 async function retest() {
   if (!confirm('确定要重新评测这条提交吗？')) return
@@ -99,6 +101,7 @@ function getRuntimeError() {
 
 async function load() {
   try {
+    loading.value = true
     error.value = null
     forbidden.value = false
     
@@ -109,7 +112,10 @@ async function load() {
     
     // 如果状态是pending或judging，开始轮询
     if (submission.status === 'pending' || submission.status === 'judging') {
+      judging.value = true
       startPoll()
+    } else {
+      judging.value = false
     }
   } catch (e: any) {
     if (e.message === 'Forbidden' || e.message.includes('403')) {
@@ -118,6 +124,8 @@ async function load() {
     } else {
       error.value = e.message || '加载失败'
     }
+  } finally {
+    loading.value = false
   }
 }
 
@@ -134,12 +142,14 @@ function startPoll() {
       cases.value = parsedResult.value?.details || []
       
       if (submission.status !== 'pending' && submission.status !== 'judging') {
+        judging.value = false
         clearInterval(pollTimer.value)
       }
     } catch (e: any) {
       // 继续轮询
     }
     if (n > 60) {
+      judging.value = false
       clearInterval(pollTimer.value)
     }
   }, 2000)
@@ -153,7 +163,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <div v-if="error" class="max-w-4xl mx-auto p-6">
+  <div v-if="loading" class="max-w-4xl mx-auto p-6 flex items-center justify-center">
+    <div class="flex flex-col items-center gap-4">
+      <div class="w-8 h-8 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
+      <div class="text-zinc-500">加载中...</div>
+    </div>
+  </div>
+
+  <div v-else-if="error" class="max-w-4xl mx-auto p-6">
     <div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
       {{ error }}
     </div>
@@ -166,6 +183,12 @@ onMounted(() => {
       <h1 class="text-xl font-bold">提交 #{{ sub.id }}</h1>
       <span :class="['tag', STATUS_COLOR[sub.status as keyof typeof STATUS_COLOR]]">{{ STATUS_LABEL[sub.status as keyof typeof STATUS_LABEL] || sub.status }}</span>
       <button @click="retest" class="btn-outline text-xs">重测</button>
+      
+      <!-- 评测中指示器 -->
+      <div v-if="judging" class="flex items-center gap-2 text-sm text-zinc-500">
+        <div class="w-4 h-4 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
+        <span>评测中...</span>
+      </div>
     </div>
 
     <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">

@@ -3,17 +3,13 @@ import { RouterLink } from 'vue-router'
 import { ref, onMounted, computed, watch } from 'vue'
 import { api, type Problem, type SubmissionStatus, DIFFICULTY_COLOR, DIFFICULTY_LABEL, LANGUAGES, STATUS_COLOR, STATUS_LABEL } from '@/lib/api'
 
-const props = defineProps<{ slug: string }>()
+const props = defineProps<{ id: string }>()
 const problem = ref<Problem | null>(null)
-const tab = ref<'description' | 'submissions'>('description')
+const loading = ref(false)
 
 const language = ref('cpp')
 const code = ref('')
 const submitting = ref(false)
-const lastSubmissionId = ref<number | null>(null)
-const pollTimer = ref<any>(null)
-const pollStatus = ref<SubmissionStatus | null>(null)
-const pollDetail = ref<any>(null)
 
 const templates: Record<string, string> = {
   cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}\n`,
@@ -36,50 +32,58 @@ watch(language, (v) => {
 })
 
 async function load() {
-  problem.value = await api.get(`/api/problems/${props.slug}`)
-  if (!code.value) code.value = templates[language.value] || ''
+  loading.value = true
+  try {
+    problem.value = await api.get(`/api/problems/${props.id}`)
+    if (!code.value) code.value = templates[language.value] || ''
+  } catch (e: any) {
+    alert('加载失败: ' + e.message)
+  } finally {
+    loading.value = false
+  }
 }
 
 async function submit() {
   if (!code.value.trim()) return alert('请输入代码')
   submitting.value = true
-  pollStatus.value = 'pending'
-  pollDetail.value = null
+  
+  console.log('=== 开始提交代码 ===')
+  console.log('题目ID:', props.id)
+  console.log('语言:', language.value)
+  console.log('代码长度:', code.value.length)
+  
   try {
     const res = await api.post<any>('/api/submissions', {
-      problemSlug: props.slug,
+      problemId: props.id,
       language: language.value,
       code: code.value
     })
-    lastSubmissionId.value = res.id
-    startPoll(res.id)
+    
+    console.log('✅ 提交成功')
+    console.log('提交ID:', res.id)
+    console.log('初始状态:', res.status)
+    
+    // 跳转到当前提交详情页面
+    location.href = `/submission/${res.id}`
+    
   } catch (e: any) {
+    console.error('❌ 提交失败:', e.message)
     alert(e.message)
   } finally { submitting.value = false }
-}
-
-function startPoll(id: number) {
-  let n = 0
-  clearInterval(pollTimer.value)
-  pollTimer.value = setInterval(async () => {
-    try {
-      const sub = await api.get<any>(`/api/submissions/${id}`)
-      pollStatus.value = sub.status
-      pollDetail.value = sub
-      if (sub.status !== 'pending' && sub.status !== 'judging') {
-        clearInterval(pollTimer.value)
-        if (location.hash.startsWith('#submissions')) tab.value = 'submissions'
-      }
-    } catch {}
-    if (n++ > 60) clearInterval(pollTimer.value)
-  }, 1500)
 }
 
 onMounted(load)
 </script>
 
 <template>
-  <div v-if="problem" class="space-y-5">
+  <div v-if="loading" class="max-w-4xl mx-auto p-6 flex items-center justify-center">
+    <div class="flex flex-col items-center gap-4">
+      <div class="w-8 h-8 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
+      <div class="text-zinc-500">加载中...</div>
+    </div>
+  </div>
+
+  <div v-else-if="problem" class="space-y-5">
     <div class="flex flex-wrap items-center gap-3">
       <RouterLink to="/problems" class="btn-ghost -ml-2">← 题目列表</RouterLink>
       <h1 class="text-2xl font-bold flex items-center gap-3">
@@ -98,49 +102,28 @@ onMounted(load)
 
     <div class="grid lg:grid-cols-5 gap-5">
       <div class="card p-6 lg:col-span-3 space-y-6">
-        <div class="flex items-center gap-1 border-b border-zinc-200 -mx-6 -mt-6 px-6 mb-2">
-          <button @click="tab = 'description'" :class="['px-4 py-3 text-sm font-medium border-b-2 -mb-px', tab === 'description' ? 'border-brand-600 text-brand-700' : 'border-transparent text-zinc-600 hover:text-zinc-900']">题目描述</button>
-          <button @click="tab = 'submissions'" :class="['px-4 py-3 text-sm font-medium border-b-2 -mb-px', tab === 'submissions' ? 'border-brand-600 text-brand-700' : 'border-transparent text-zinc-600 hover:text-zinc-900']">我的提交</button>
-        </div>
-
-        <template v-if="tab === 'description'">
-          <section>
-            <h2 class="text-lg font-semibold mb-2">题目描述</h2>
-            <div class="text-zinc-700 leading-relaxed whitespace-pre-wrap">{{ problem.description }}</div>
-          </section>
-          <section v-if="problem.input_format">
-            <h2 class="text-lg font-semibold mb-2">输入格式</h2>
-            <div class="text-zinc-700 leading-relaxed whitespace-pre-wrap">{{ problem.input_format }}</div>
-          </section>
-          <section v-if="problem.output_format">
-            <h2 class="text-lg font-semibold mb-2">输出格式</h2>
-            <div class="text-zinc-700 leading-relaxed whitespace-pre-wrap">{{ problem.output_format }}</div>
-          </section>
-          <section class="grid sm:grid-cols-2 gap-4">
-            <div>
-              <h3 class="text-sm font-semibold text-zinc-600 mb-1">样例输入</h3>
-              <pre class="!rounded-lg !text-xs">{{ problem.sample_input || '' }}</pre>
-            </div>
-            <div>
-              <h3 class="text-sm font-semibold text-zinc-600 mb-1">样例输出</h3>
-              <pre class="!rounded-lg !text-xs">{{ problem.sample_output || '' }}</pre>
-            </div>
-          </section>
-        </template>
-
-        <template v-else>
-          <div v-if="lastSubmissionId && pollStatus" class="mb-4 p-4 rounded-lg border border-zinc-200 bg-zinc-50">
-            <div class="flex items-center gap-3">
-              <span :class="['tag', STATUS_COLOR[pollStatus]]">{{ STATUS_LABEL[pollStatus] }}</span>
-              <RouterLink :to="`/submission/${lastSubmissionId}`" class="link text-sm">查看 #{{ lastSubmissionId }}</RouterLink>
-              <span class="text-xs text-zinc-500 ml-auto">
-                <span v-if="pollDetail?.run_time_ms">{{ pollDetail.run_time_ms }} ms</span>
-                <span v-if="pollDetail?.memory_kb" class="ml-2">{{ (pollDetail.memory_kb / 1024).toFixed(1) }} MB</span>
-              </span>
-            </div>
+        <section>
+          <h2 class="text-lg font-semibold mb-2">题目描述</h2>
+          <div class="text-zinc-700 leading-relaxed whitespace-pre-wrap">{{ problem.description }}</div>
+        </section>
+        <section v-if="problem.input_format">
+          <h2 class="text-lg font-semibold mb-2">输入格式</h2>
+          <div class="text-zinc-700 leading-relaxed whitespace-pre-wrap">{{ problem.input_format }}</div>
+        </section>
+        <section v-if="problem.output_format">
+          <h2 class="text-lg font-semibold mb-2">输出格式</h2>
+          <div class="text-zinc-700 leading-relaxed whitespace-pre-wrap">{{ problem.output_format }}</div>
+        </section>
+        <section class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <h3 class="text-sm font-semibold text-zinc-600 mb-1">样例输入</h3>
+            <pre class="!rounded-lg !text-xs">{{ problem.sample_input || '' }}</pre>
           </div>
-          <p class="text-sm text-zinc-500">进入 <RouterLink to="/submissions" class="link">提交记录</RouterLink> 查看所有历史提交。</p>
-        </template>
+          <div>
+            <h3 class="text-sm font-semibold text-zinc-600 mb-1">样例输出</h3>
+            <pre class="!rounded-lg !text-xs">{{ problem.sample_output || '' }}</pre>
+          </div>
+        </section>
       </div>
 
       <div class="card lg:col-span-2 flex flex-col overflow-hidden">
