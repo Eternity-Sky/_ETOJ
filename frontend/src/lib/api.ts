@@ -1,6 +1,10 @@
 const API_BASE = import.meta.env.VITE_API_BASE || "https://api.csp.qzz.io";
 
-type Opt = Omit<RequestInit, "body"> & { body?: unknown };
+// 简单的内存缓存
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5分钟缓存
+
+type Opt = Omit<RequestInit, "body"> & { body?: unknown; cache?: boolean };
 
 async function request<T = any>(path: string, opts: Opt = {}): Promise<T> {
   const headers: Record<string, string> = {
@@ -11,7 +15,14 @@ async function request<T = any>(path: string, opts: Opt = {}): Promise<T> {
   if (token) headers.Authorization = `Bearer ${token}`;
   
   const url = API_BASE + path;
-  console.log(`API请求: ${url}`);
+  
+  // 检查缓存（仅对GET请求）
+  if (opts.method === "GET" || !opts.method) {
+    const cached = cache.get(url);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.data as T;
+    }
+  }
   
   const res = await fetch(url, {
     ...opts,
@@ -29,7 +40,12 @@ async function request<T = any>(path: string, opts: Opt = {}): Promise<T> {
     const msg = data?.error || `HTTP ${res.status}`;
     throw new Error(msg);
   }
-  console.log(`API响应:`, data);
+  
+  // 缓存GET请求结果
+  if (opts.method === "GET" || !opts.method) {
+    cache.set(url, { data, timestamp: Date.now() });
+  }
+  
   return data as T;
 }
 
@@ -40,6 +56,7 @@ export const api = {
   put: <T = any>(p: string, body?: any) =>
     request<T>(p, { method: "PUT", body }),
   del: <T = any>(p: string) => request<T>(p, { method: "DELETE" }),
+  clearCache: () => cache.clear(),
 };
 
 export type User = {

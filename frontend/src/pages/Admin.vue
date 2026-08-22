@@ -162,11 +162,16 @@ function generateMarkdown(): string {
 
 function parseMarkdown(): void {
   const md = markdownContent.value
-  const sections = md.split(/##\s*/)
+  if (!md) return
+  
+  // 更健壮的Markdown解析
+  const sections = md.split(/##\s+/)
   
   // 解析各个部分
   sections.forEach(section => {
     const lines = section.trim().split('\n')
+    if (lines.length === 0) return
+    
     const title = lines[0]?.trim()
     const content = lines.slice(1).join('\n').trim()
     
@@ -177,11 +182,11 @@ function parseMarkdown(): void {
     } else if (title === '输出格式') {
       problemForm.value.output_format = content
     } else if (title === '样例输入') {
-      // 提取代码块内容
-      const codeMatch = content.match(/```[\s\S]*?\n([\s\S]*?)```/)
+      // 提取代码块内容，支持多种格式
+      const codeMatch = content.match(/```(?:\w+)?\n([\s\S]*?)```/)
       problemForm.value.sample_input = codeMatch ? codeMatch[1].trim() : content
     } else if (title === '样例输出') {
-      const codeMatch = content.match(/```[\s\S]*?\n([\s\S]*?)```/)
+      const codeMatch = content.match(/```(?:\w+)?\n([\s\S]*?)```/)
       problemForm.value.sample_output = codeMatch ? codeMatch[1].trim() : content
     }
   })
@@ -457,6 +462,28 @@ onMounted(() => {
                   <div><strong>样例:</strong> 用 ## 样例输入 和 ## 样例输出 标记</div>
                 </div>
               </details>
+            </div>
+          </div>
+          
+          <!-- 样例输入输出 -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-zinc-300 mb-1">样例输入</label>
+              <textarea 
+                v-model="problemForm.sample_input" 
+                class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 rounded-md px-3 py-2 font-mono text-sm focus:outline-none focus:border-blue-500"
+                rows="3"
+                placeholder="样例输入数据"
+              ></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-zinc-300 mb-1">样例输出</label>
+              <textarea 
+                v-model="problemForm.sample_output" 
+                class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 rounded-md px-3 py-2 font-mono text-sm focus:outline-none focus:border-blue-500"
+                rows="3"
+                placeholder="样例输出数据"
+              ></textarea>
             </div>
           </div>
           

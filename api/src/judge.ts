@@ -60,15 +60,15 @@ async function pollGitHubResult(
   db: D1Database,
 ): Promise<void> {
   const [owner, name] = repo.split("/");
-  const maxAttempts = 60; // 最多轮询60次
-  const interval = 2000; // 每2秒轮询一次
+  const maxAttempts = 120; // 增加轮询次数到120次
+  const interval = 1000; // 减少轮询间隔到1秒
   
   for (let i = 0; i < maxAttempts; i++) {
     try {
       await new Promise((resolve) => setTimeout(resolve, interval));
       
-      // 获取最新的 workflow 运行（不限制event类型，获取所有最新的）
-      const runsUrl = `https://api.github.com/repos/${owner}/${name}/actions/runs?per_page=5`;
+      // 获取最新的 workflow 运行
+      const runsUrl = `https://api.github.com/repos/${owner}/${name}/actions/runs?per_page=10&event=repository_dispatch`;
       
       const runsRes = await fetch(runsUrl, {
         headers: {
@@ -88,15 +88,17 @@ async function pollGitHubResult(
         continue;
       }
       
-      // 直接获取最新的 repository_dispatch 运行
-      const run = runsData.workflow_runs.find((r: any) => r.event === "repository_dispatch");
+      // 查找匹配当前提交的运行
+      const run = runsData.workflow_runs.find((r: any) => {
+        const clientPayload = r.client_payload as any;
+        return clientPayload?.submissionId === payload.submissionId;
+      });
       
       if (!run) {
         continue;
       }
       
       // 只要状态是completed就认为评测完成
-      // 结果会通过webhook单独推送，这里只是等待状态
       if (run.status === "completed") {
         return;
       }

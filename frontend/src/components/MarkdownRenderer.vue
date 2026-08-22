@@ -20,24 +20,54 @@ async function renderMarkdown() {
   // 保护LaTeX公式，临时替换为占位符
   const mathPlaceholders: { latex: string; type: 'block' | 'inline' }[] = []
   
+  // 先保护代码块中的内容，避免代码块中的$被误匹配
+  const codeBlocks: string[] = []
+  content = content.replace(/```[\s\S]*?```/g, (match: string) => {
+    const index = codeBlocks.length
+    codeBlocks.push(match)
+    return `CODEBLOCK${index}PLACEHOLDER`
+  })
+  
+  // 保护行内代码 `...` 中的内容
+  const inlineCodes: string[] = []
+  content = content.replace(/`[^`]+`/g, (match: string) => {
+    const index = inlineCodes.length
+    inlineCodes.push(match)
+    return `INLINECODE${index}PLACEHOLDER`
+  })
+  
   // 保护块级公式 $$...$$
   content = content.replace(/\$\$([\s\S]*?)\$\$/g, (match: string, latex: string) => {
     const index = mathPlaceholders.length
-    mathPlaceholders.push({ latex, type: 'block' })
+    mathPlaceholders.push({ latex: latex.trim(), type: 'block' })
     return `MATHBLOCK${index}PLACEHOLDER`
   })
   
-  // 保护行内公式 $...$
+  // 保护行内公式 $...$（使用更精确的匹配，避免匹配单个$符号）
   content = content.replace(/\$([^$\n]+?)\$/g, (match: string, latex: string) => {
+    // 确保不是价格符号等普通$符号
+    if (latex.trim().length === 0 || /^[0-9,.]+$/.test(latex.trim())) {
+      return match // 如果是纯数字或空，不作为公式处理
+    }
     const index = mathPlaceholders.length
-    mathPlaceholders.push({ latex, type: 'inline' })
+    mathPlaceholders.push({ latex: latex.trim(), type: 'inline' })
     return `MATHINLINE${index}PLACEHOLDER`
   })
 
   // 渲染Markdown
   let html = await marked(content)
   
-  // 恢复并渲染LaTeX公式 - 使用全局替换确保所有匹配都被替换
+  // 恢复代码块
+  for (let i = 0; i < codeBlocks.length; i++) {
+    html = html.replace(new RegExp(`CODEBLOCK${i}PLACEHOLDER`, 'g'), codeBlocks[i])
+  }
+  
+  // 恢复行内代码
+  for (let i = 0; i < inlineCodes.length; i++) {
+    html = html.replace(new RegExp(`INLINECODE${i}PLACEHOLDER`, 'g'), inlineCodes[i])
+  }
+  
+  // 恢复并渲染LaTeX公式
   for (let i = 0; i < mathPlaceholders.length; i++) {
     const placeholder = mathPlaceholders[i]
     const blockPattern = `MATHBLOCK${i}PLACEHOLDER`

@@ -65,6 +65,9 @@ function getCompileError() {
   if (!sub.value?.result_json) return '无编译错误信息'
   try {
     const result = JSON.parse(sub.value.result_json)
+    if (result.error) {
+      return result.error
+    }
     if (result.details && result.details.compilerOutput) {
       return result.details.compilerOutput
     }
@@ -74,7 +77,7 @@ function getCompileError() {
     if (result.details && result.details.msg) {
       return result.details.msg
     }
-    return JSON.stringify(result.details, null, 2)
+    return JSON.stringify(result, null, 2)
   } catch {
     return sub.value.result_json
   }
@@ -115,6 +118,11 @@ async function load() {
     
     sub.value = submission
     cases.value = parsedResult.value?.details || []
+    
+    // 如果有测试点详情，优先使用测试点详情
+    if (parsedResult.value?.details && parsedResult.value.details.details) {
+      cases.value = parsedResult.value.details.details
+    }
     
     // 如果状态是pending或judging，开始轮询
     if (submission.status === 'pending' || submission.status === 'judging') {

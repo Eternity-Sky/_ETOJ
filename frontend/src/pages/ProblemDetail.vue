@@ -4,6 +4,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { api, type Problem, type SubmissionStatus, DIFFICULTY_COLOR, DIFFICULTY_LABEL, LANGUAGES, STATUS_COLOR, STATUS_LABEL } from '@/lib/api'
 import { useToast } from '@/lib/toast'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
+import CodeEditor from '@/components/CodeEditor.vue'
 
 const { success, error: toastError, info } = useToast()
 
@@ -184,12 +185,11 @@ onMounted(load)
           </div>
           
           <!-- 代码编辑器 -->
-          <textarea
-            v-model="code" spellcheck="false"
-            class="w-full h-[500px] font-mono text-sm p-4 outline-none bg-zinc-900 text-zinc-100 resize-none"
-            placeholder="在这里输入你的代码..."
-            style="tab-size: 4; line-height: 1.5;"
-          ></textarea>
+          <CodeEditor 
+            v-model="code" 
+            :language="language"
+            height="500px"
+          />
           
           <!-- 提交按钮 -->
           <div class="flex justify-end p-4 border-t border-zinc-700 bg-zinc-750">

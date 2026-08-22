@@ -5,6 +5,34 @@ import type { D1Database } from "@cloudflare/workers-types";
 import { hashPassword, verifyPassword, generateToken } from "./auth";
 import { triggerJudge, type JudgePayload } from "./judge";
 
+// 简单的内存缓存
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 60 * 1000; // 1分钟缓存
+
+function getCache<T>(key: string): T | null {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data as T;
+  }
+  return null;
+}
+
+function setCache<T>(key: string, data: T): void {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
+function clearCache(pattern?: string): void {
+  if (pattern) {
+    for (const key of cache.keys()) {
+      if (key.includes(pattern)) {
+        cache.delete(key);
+      }
+    }
+  } else {
+    cache.clear();
+  }
+}
+
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -146,6 +174,12 @@ app.get("/api/problems", async (c) => {
   const difficulty = c.req.query("difficulty");
   const offset = (page - 1) * pageSize;
 
+  const cacheKey = `problems:${page}:${pageSize}:${difficulty || 'all'}`;
+  const cached = getCache(cacheKey);
+  if (cached) {
+    return c.json(cached);
+  }
+
   let where = "";
   const params: any[] = [];
   if (difficulty) {
@@ -163,22 +197,34 @@ app.get("/api/problems", async (c) => {
   )
     .bind(...params)
     .first();
-  return c.json({
+  
+  const result = {
     items: items.results || [],
     total: total?.c ?? 0,
     page,
     pageSize,
-  });
+  };
+  
+  setCache(cacheKey, result);
+  return c.json(result);
 });
 
 app.get("/api/problems/:id", async (c) => {
   const id = Number(c.req.param("id"));
+  const cacheKey = `problem:${id}`;
+  const cached = getCache(cacheKey);
+  if (cached) {
+    return c.json(cached);
+  }
+  
   const problem = await c.env.DB.prepare(
     "SELECT id, title, slug, difficulty, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, submission_count, accepted_count, created_at FROM problems WHERE id = ?",
   )
     .bind(id)
     .first();
   if (!problem) return c.json({ error: "Not found" }, 404);
+  
+  setCache(cacheKey, problem);
   return c.json(problem);
 });
 
@@ -234,6 +280,10 @@ app.post("/api/submissions", authMiddleware, async (c) => {
     )
       .bind(userId)
       .run();
+
+    // 清除相关缓存
+    clearCache(`problem:${problemId}`);
+    clearCache('problems:');
 
     const payload: JudgePayload = {
       submissionId,
