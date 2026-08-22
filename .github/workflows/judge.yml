@@ -21,32 +21,8 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Set up Python
-        if: ${{ github.event.client_payload.language == 'python3' }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Set up Java
-        if: ${{ github.event.client_payload.language == 'java' }}
-        uses: actions/setup-java@v4
-        with:
-          java-version: "21"
-          distribution: "temurin"
-
-      - name: Set up Rust
-        if: ${{ github.event.client_payload.language == 'rust' }}
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Set up Go
-        if: ${{ github.event.client_payload.language == 'go' }}
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.22"
-
       - name: Install GCC (C/C++)
-        if: ${{ github.event.client_payload.language == 'c' || github.event.client_payload.language == 'cpp' }}
-        run: sudo apt-get update && sudo apt-get install -y gcc g++
+        run: sudo apt-get update && sudo apt-get install -y g++
 
       - name: Write submission data
         env:
@@ -80,23 +56,39 @@ jobs:
       - name: Upload result to API
         if: always() # 无论评测成功还是失败都执行
         env:
-          JUDGE_RESULT: ${{ steps.judge.outputs.result }}
           COMPILER_OUTPUT: ${{ env.COMPILER_OUTPUT }}
           SUB_ID: ${{ github.event.client_payload.submissionId }}
           PROBLEM_ID: ${{ github.event.client_payload.problemId }}
           USER_ID: ${{ github.event.client_payload.userId }}
           API_TOKEN: ${{ secrets.API_TOKEN }}
         run: |
-          echo "Judge result: $JUDGE_RESULT"
+          if [ -f judge_output.txt ]; then
+            JUDGE_OUTPUT=$(cat judge_output.txt)
+          else
+            JUDGE_OUTPUT='{"status":"runtime_error","details":{"passed":false,"error":"No judge output"}}'
+          fi
+          
+          echo "Judge output: $JUDGE_OUTPUT"
           node -e "
-            const result = JSON.parse(process.env.JUDGE_RESULT || '{}');
+            const judgeOutput = process.env.JUDGE_OUTPUT || '{}';
             const compilerOutput = process.env.COMPILER_OUTPUT || '';
             
+            let result;
+            try {
+              result = JSON.parse(judgeOutput);
+            } catch (e) {
+              console.error('Failed to parse judge output:', e);
+              result = { status: 'runtime_error', details: { passed: false, error: 'Judge output parse error' } };
+            }
+            
+            // 确保details字段存在
+            if (!result.details) {
+              result.details = { passed: false, details: [] };
+            }
+            
             // 将编译器输出添加到 result.details 中
-            if (compilerOutput && result.details) {
+            if (compilerOutput) {
               result.details.compilerOutput = compilerOutput;
-            } else if (compilerOutput) {
-              result.details = { compilerOutput };
             }
             
             const body = {
@@ -104,7 +96,7 @@ jobs:
               problemId: Number(process.env.PROBLEM_ID),
               userId: Number(process.env.USER_ID),
               status: result.status || 'runtime_error',
-              resultJson: JSON.stringify(result.details || {}),
+              resultJson: JSON.stringify(result.details),
               runTimeMs: result.runTimeMs || null,
               memoryKb: result.memoryKb || null,
               accepted: result.status === 'accepted'

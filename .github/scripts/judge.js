@@ -9,11 +9,10 @@ const { language, code, testCases = [], timeLimitMs = 1000, memoryLimitMb = 256,
 const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'etoj-'));
 
 const extMap = {
-  c: 'c', cpp: 'cpp', python3: 'py', java: 'java',
-  javascript: 'js', typescript: 'ts', rust: 'rs', go: 'go'
+  cpp: 'cpp'
 };
-const ext = extMap[language] || language;
-const srcName = language === 'java' ? 'Main.java' : `solution.${ext}`;
+const ext = extMap[language] || 'cpp';
+const srcName = `solution.${ext}`;
 const srcPath = path.join(workdir, srcName);
 fs.writeFileSync(srcPath, code);
 
@@ -26,47 +25,11 @@ function norm(s) {
 
 async function compile() {
   try {
-    switch (language) {
-      case 'c':
-        execFileSync('gcc', ['-O2', '-o', 'solution', 'solution.c'], { cwd: workdir, timeout: 10000, stdio: 'pipe' });
-        runCmd = [path.join(workdir, 'solution')];
-        break;
-      case 'cpp':
-        execFileSync('g++', ['-O2', '-std=c++17', '-o', 'solution', 'solution.cpp'], { cwd: workdir, timeout: 15000, stdio: 'pipe' });
-        runCmd = [path.join(workdir, 'solution')];
-        break;
-      case 'rust':
-        execFileSync('rustc', ['-O', '-o', 'solution', 'solution.rs'], { cwd: workdir, timeout: 30000, stdio: 'pipe' });
-        runCmd = [path.join(workdir, 'solution')];
-        break;
-      case 'go':
-        execFileSync('go', ['build', '-o', 'solution', 'solution.go'], { cwd: workdir, timeout: 30000, stdio: 'pipe' });
-        runCmd = [path.join(workdir, 'solution')];
-        break;
-      case 'java':
-        execFileSync('javac', ['Main.java'], { cwd: workdir, timeout: 15000, stdio: 'pipe' });
-        runCmd = ['java', '-Xmx' + memoryLimitMb + 'm', '-cp', workdir, 'Main'];
-        break;
-      case 'python3':
-        runCmd = ['python3', srcPath];
-        break;
-      case 'javascript':
-        runCmd = ['node', srcPath];
-        break;
-      case 'typescript':
-        const jsPath = path.join(workdir, 'solution.js');
-        const tsPath = require.resolve('typescript', { paths: [process.cwd(), __dirname] });
-        if (tsPath) {
-          const ts = require(tsPath);
-          const out = ts.transpileModule(code, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } });
-          fs.writeFileSync(jsPath, out.outputText);
-          runCmd = ['node', jsPath];
-        } else {
-          compileStatus = { status: 'compile_error', msg: 'TypeScript compiler not available' };
-        }
-        break;
-      default:
-        compileStatus = { status: 'compile_error', msg: `Unsupported language: ${language}` };
+    if (language === 'cpp') {
+      execFileSync('g++', ['-O2', '-std=c++17', '-o', 'solution', 'solution.cpp'], { cwd: workdir, timeout: 15000, stdio: 'pipe' });
+      runCmd = [path.join(workdir, 'solution')];
+    } else {
+      compileStatus = { status: 'compile_error', msg: `Unsupported language: ${language}. Only C++ is supported.` };
     }
   } catch (e) {
     // 捕获编译器返回的错误信息
