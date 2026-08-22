@@ -142,6 +142,15 @@ jobs:
               result.details = { passed: false, details: [] };
             }
             
+            // 清理错误信息中的特殊字符
+            if (result.details.error) {
+              result.details.error = result.details.error
+                .replace(/\\\\/g, '\\\\')
+                .replace(/\"/g, '\\\"')
+                .replace(/\\n/g, '\\\\n')
+                .replace(/\\t/g, '\\\\t');
+            }
+            
             const body = {
               submissionId: Number(process.env.SUB_ID),
               problemId: Number(process.env.PROBLEM_ID),
@@ -154,6 +163,19 @@ jobs:
               githubRunId: githubRunId,
               judgeLatencyMs: Number(judgeLatencyMs)
             };
+            
+            // 确保 resultJson 是有效的 JSON
+            try {
+              JSON.parse(body.resultJson);
+            } catch (e) {
+              console.error('Invalid resultJson:', e);
+              body.resultJson = JSON.stringify({
+                passed: false,
+                error: '评测结果格式错误',
+                details: []
+              });
+            }
+            
             console.log('Sending result to API:', JSON.stringify(body));
             
             const https = require('https');

@@ -390,10 +390,24 @@ app.get("/api/judge/health", async (c) => {
       });
     }
     
-    // 计算延迟：从创建时间到现在
+    // 计算延迟：根据运行状态计算
+    let latency = null;
     const now = Date.now();
-    const createdAt = new Date(latestRun.created_at).getTime();
-    const latency = now - createdAt;
+    
+    if (latestRun.status === "completed") {
+      // 已完成：计算运行时长
+      const startedAt = new Date(latestRun.started_at).getTime();
+      const completedAt = new Date(latestRun.updated_at).getTime();
+      latency = completedAt - startedAt;
+    } else if (latestRun.status === "in_progress") {
+      // 运行中：计算从开始到现在的时长
+      const startedAt = new Date(latestRun.started_at).getTime();
+      latency = now - startedAt;
+    } else if (latestRun.status === "queued") {
+      // 排队中：计算从创建到现在的时长
+      const createdAt = new Date(latestRun.created_at).getTime();
+      latency = now - createdAt;
+    }
     
     // 判断健康状态
     let healthStatus = "healthy";
@@ -422,7 +436,9 @@ app.get("/api/judge/health", async (c) => {
       runId: latestRun.id,
       runStatus: latestRun.status,
       runConclusion: latestRun.conclusion,
-      createdAt: latestRun.created_at
+      createdAt: latestRun.created_at,
+      startedAt: latestRun.started_at,
+      updatedAt: latestRun.updated_at
     });
     
   } catch (e: any) {
@@ -453,12 +469,27 @@ app.post("/api/webhooks/judge", async (c) => {
     
     const { submissionId, problemId, userId, status, resultJson, runTimeMs, memoryKb, accepted, githubRunId, judgeLatencyMs } = await c.req.json();
     
+    // 确保 resultJson 是有效的 JSON 字符串
+    let safeResultJson = resultJson;
+    try {
+      // 尝试解析 resultJson 确保它是有效的 JSON
+      JSON.parse(resultJson);
+    } catch (e) {
+      console.error("Invalid resultJson received:", e);
+      // 如果解析失败，创建一个安全的错误信息
+      safeResultJson = JSON.stringify({
+        passed: false,
+        error: "评测结果解析失败",
+        details: []
+      });
+    }
+    
     await applyJudgeResult(c.env.DB, {
       submissionId,
       problemId,
       userId,
       status,
-      resultJson,
+      resultJson: safeResultJson,
       runTimeMs,
       memoryKb,
       accepted,
