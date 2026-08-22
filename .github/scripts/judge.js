@@ -68,7 +68,7 @@ async function compile() {
       default:
         compileStatus = { status: 'compile_error', msg: `Unsupported language: ${language}` };
     }
-  } catch (e: any) {
+  } catch (e) {
     // 捕获编译器返回的错误信息
     let errorMsg = e.message || 'Unknown compilation error';
     if (e.stderr) {
@@ -82,7 +82,7 @@ async function compile() {
 }
 
 async function runCase(input: string) {
-  return new Promise<{ output: string; timeMs: number; memoryKb: number; timedOut: boolean; error?: string }>((resolve) => {
+  return new Promise((resolve) => {
     if (!runCmd) return resolve({ output: '', timeMs: 0, memoryKb: 0, timedOut: false, error: 'no runnable' });
     const start = Date.now();
     let timedOut = false;
@@ -114,12 +114,12 @@ async function main() {
     emit({
       status: 'compile_error',
       runTimeMs: 0, memoryKb: 0,
-      details: { passed: false, error: compileStatus.msg, details: testCases.map((_: any, i: number) => ({ index: i, passed: false })) }
+      details: { passed: false, error: compileStatus.msg, details: testCases.map((_, i) => ({ index: i, passed: false })) }
     });
     return;
   }
 
-  const results: any[] = [];
+  const results = [];
   let totalTime = 0, maxMem = 0;
   let allPass = true;
   let failedReason: string | null = null;
@@ -163,7 +163,7 @@ async function main() {
   });
 }
 
-function emit(obj: any) {
+function emit(obj) {
   const out = {
     submissionId, problemId,
     status: obj.status,
