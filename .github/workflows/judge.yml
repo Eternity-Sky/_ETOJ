@@ -65,13 +65,23 @@ jobs:
 
       - name: Run judge
         id: judge
-        run: node .github/scripts/judge.js submission.json
+        run: node .github/scripts/judge.js submission.json 2>&1 | tee judge_output.log
         continue-on-error: true
+
+      - name: Capture compiler output
+        if: always()
+        run: |
+          if [ -f judge_output.log ]; then
+            echo "COMPILER_OUTPUT<<EOF" >> $GITHUB_ENV
+            cat judge_output.log >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          fi
 
       - name: Upload result to API
         if: always() # 无论评测成功还是失败都执行
         env:
           JUDGE_RESULT: ${{ steps.judge.outputs.result }}
+          COMPILER_OUTPUT: ${{ env.COMPILER_OUTPUT }}
           SUB_ID: ${{ github.event.client_payload.submissionId }}
           PROBLEM_ID: ${{ github.event.client_payload.problemId }}
           USER_ID: ${{ github.event.client_payload.userId }}
@@ -80,6 +90,15 @@ jobs:
           echo "Judge result: $JUDGE_RESULT"
           node -e "
             const result = JSON.parse(process.env.JUDGE_RESULT || '{}');
+            const compilerOutput = process.env.COMPILER_OUTPUT || '';
+            
+            // 将编译器输出添加到 result.details 中
+            if (compilerOutput && result.details) {
+              result.details.compilerOutput = compilerOutput;
+            } else if (compilerOutput) {
+              result.details = { compilerOutput };
+            }
+            
             const body = {
               submissionId: Number(process.env.SUB_ID),
               problemId: Number(process.env.PROBLEM_ID),

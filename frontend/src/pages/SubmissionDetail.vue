@@ -69,6 +69,9 @@ function getCompileError() {
     if (result.details && result.details.error) {
       return result.details.error
     }
+    if (result.details && result.details.msg) {
+      return result.details.msg
+    }
     return JSON.stringify(result.details, null, 2)
   } catch {
     return sub.value.result_json
@@ -79,11 +82,17 @@ function getRuntimeError() {
   if (!sub.value?.result_json) return '无运行错误信息'
   try {
     const result = JSON.parse(sub.value.result_json)
+    if (result.details && result.details.compilerOutput) {
+      return result.details.compilerOutput
+    }
     if (result.details && result.details.error) {
       return result.details.error
     }
     if (result.details && result.details.message) {
       return result.details.message
+    }
+    if (result.details && result.details.msg) {
+      return result.details.msg
     }
     if (result.details && result.details.details) {
       return JSON.stringify(result.details.details, null, 2)

@@ -76,6 +76,7 @@ async function compile() {
     } else if (e.stdout) {
       errorMsg = e.stdout.toString();
     }
+    console.error('编译错误:', errorMsg); // 输出编译错误到控制台
     compileStatus = { status: 'compile_error', msg: errorMsg };
   }
 }
