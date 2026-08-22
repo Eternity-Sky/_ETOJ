@@ -58,7 +58,9 @@ async function runCase(input) {
     child.on('error', e => { clearTimeout(t); resolve({ output, timeMs: Date.now() - start, memoryKb: 0, timedOut, error: e.message }); });
     child.on('close', (code) => {
       clearTimeout(t);
-      resolve({ output, timeMs: Date.now() - start, memoryKb: 0, timedOut, error: code !== 0 && !timedOut ? (error || `exit ${code}`) : undefined });
+      // 简单估算内存使用：基于输出大小
+      const estimatedMemory = Math.max(0, Math.floor(output.length / 1024) * 100); // 粗略估算
+      resolve({ output, timeMs: Date.now() - start, memoryKb: estimatedMemory, timedOut, error: code !== 0 && !timedOut ? (error || `exit ${code}`) : undefined });
     });
     try {
       child.stdin.write(input);
@@ -91,7 +93,13 @@ async function main() {
     maxMem = Math.max(maxMem, r.memoryKb || 0);
     let passed = false;
     let reason = null;
-    if (r.timedOut) {
+    
+    // 检查内存超限
+    if (r.memoryKb > memoryLimitMb * 1024) {
+      failedReason = failedReason || 'memory_limit_exceeded';
+      reason = 'MLE';
+      passed = false;
+    } else if (r.timedOut) {
       failedReason = failedReason || 'time_limit_exceeded';
       reason = 'TLE';
     } else if (r.error) {
@@ -101,6 +109,7 @@ async function main() {
       passed = norm(r.output) === norm(tc.output);
       if (!passed) failedReason = failedReason || 'wrong_answer';
     }
+    
     if (!passed) allPass = false;
     results.push({
       index: i,
