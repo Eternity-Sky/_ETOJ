@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 
 const props = defineProps<{
   modelValue: string
+  captchaCode: string  // 接收后端生成的验证码
 }>()
 
 const emit = defineEmits<{
@@ -11,9 +12,8 @@ const emit = defineEmits<{
 }>()
 
 const canvasRef = ref<HTMLCanvasElement>()
-const captchaCode = ref('')
 
-function generateCaptcha() {
+function generateCaptcha(code: string) {
   if (!canvasRef.value) return
   
   const canvas = canvasRef.value
@@ -29,14 +29,6 @@ function generateCaptcha() {
   gradient.addColorStop(1, '#3f3f46')
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, canvas.width, canvas.height)
-  
-  // 生成随机验证码
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-  let code = ''
-  for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  captchaCode.value = code
   
   // 绘制验证码字符
   ctx.font = 'bold 24px Arial'
@@ -82,12 +74,21 @@ function generateCaptcha() {
 }
 
 function refresh() {
-  generateCaptcha()
   emit('refresh')
 }
 
+// 监听captchaCode变化，重新绘制
+import { watch } from 'vue'
+watch(() => props.captchaCode, (newCode) => {
+  if (newCode) {
+    generateCaptcha(newCode)
+  }
+})
+
 onMounted(() => {
-  generateCaptcha()
+  if (props.captchaCode) {
+    generateCaptcha(props.captchaCode)
+  }
 })
 
 defineExpose({

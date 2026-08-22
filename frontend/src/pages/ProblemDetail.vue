@@ -19,6 +19,7 @@ const language = ref('cpp')
 const activeTab = ref('description') // 'description' or 'submit'
 const captchaInput = ref('')
 const captchaId = ref('')
+const captchaCode = ref('')
 
 const templates: Record<string, string> = {
   cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}\n`,
@@ -52,6 +53,7 @@ async function getCaptcha() {
   try {
     const response = await api.get('/api/captcha')
     captchaId.value = response.captchaId
+    captchaCode.value = response.captchaCode
   } catch (e: any) {
     console.error('获取验证码失败:', e)
   }
@@ -215,6 +217,7 @@ onMounted(load)
           <div class="px-4 py-3 border-t border-zinc-700 bg-zinc-750">
             <Captcha 
               v-model="captchaInput" 
+              :captcha-code="captchaCode"
               @refresh="getCaptcha"
             />
           </div>

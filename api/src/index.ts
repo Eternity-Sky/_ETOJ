@@ -127,7 +127,7 @@ app.get("/api/captcha", (c) => {
   
   return c.json({
     captchaId,
-    // 不返回实际验证码，只返回ID
+    captchaCode: code, // 返回验证码用于前端绘制
   });
 });
 
