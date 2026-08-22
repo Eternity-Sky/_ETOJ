@@ -9,6 +9,10 @@ import { triggerJudge, type JudgePayload } from "./judge";
 const cache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 60 * 1000; // 1分钟缓存
 
+// 验证码存储
+const captchaStore = new Map<string, { code: string; timestamp: number }>();
+const CAPTCHA_TTL = 5 * 60 * 1000; // 5分钟有效期
+
 function getCache<T>(key: string): T | null {
   const cached = cache.get(key);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -31,6 +35,19 @@ function clearCache(pattern?: string): void {
   } else {
     cache.clear();
   }
+}
+
+function generateCaptchaId(): string {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+}
+
+function generateCaptchaCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let code = '';
+  for (let i = 0; i < 4; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
 }
 
 type Bindings = {
@@ -97,6 +114,52 @@ const adminMiddleware = async (c: any, next: any) => {
 app.get("/", (c) =>
   c.json({ name: "ETOJ API", version: "0.1.0", ts: Date.now() }),
 );
+
+// 验证码相关端点
+app.get("/api/captcha", (c) => {
+  const captchaId = generateCaptchaId();
+  const code = generateCaptchaCode();
+  
+  captchaStore.set(captchaId, {
+    code,
+    timestamp: Date.now()
+  });
+  
+  return c.json({
+    captchaId,
+    // 不返回实际验证码，只返回ID
+  });
+});
+
+app.post("/api/captcha/validate", (c) => {
+  const { captchaId, code } = c.req.json();
+  
+  if (!captchaId || !code) {
+    return c.json({ valid: false, error: "Missing captcha data" }, 400);
+  }
+  
+  const stored = captchaStore.get(captchaId);
+  
+  if (!stored) {
+    return c.json({ valid: false, error: "Invalid captcha ID" });
+  }
+  
+  // 检查是否过期
+  if (Date.now() - stored.timestamp > CAPTCHA_TTL) {
+    captchaStore.delete(captchaId);
+    return c.json({ valid: false, error: "Captcha expired" });
+  }
+  
+  // 验证码（不区分大小写）
+  const isValid = code.toLowerCase() === stored.code.toLowerCase();
+  
+  // 验证后删除，防止重复使用
+  if (isValid) {
+    captchaStore.delete(captchaId);
+  }
+  
+  return c.json({ valid: isValid });
+});
 
 app.post("/api/auth/register", async (c) => {
   try {
@@ -253,9 +316,33 @@ app.post("/api/problems", authMiddleware, adminMiddleware, async (c) => {
 app.post("/api/submissions", authMiddleware, async (c) => {
   try {
     const userId = c.get("userId");
-    const { problemId, language, code } = await c.req.json();
+    const { problemId, language, code, captchaId, captchaCode } = await c.req.json();
+    
     if (!problemId || !language || !code)
       return c.json({ error: "Missing fields" }, 400);
+    
+    // 验证验证码
+    if (!captchaId || !captchaCode) {
+      return c.json({ error: "请完成验证码" }, 400);
+    }
+    
+    const stored = captchaStore.get(captchaId);
+    if (!stored) {
+      return c.json({ error: "验证码无效" }, 400);
+    }
+    
+    if (Date.now() - stored.timestamp > CAPTCHA_TTL) {
+      captchaStore.delete(captchaId);
+      return c.json({ error: "验证码已过期" }, 400);
+    }
+    
+    if (captchaCode.toLowerCase() !== stored.code.toLowerCase()) {
+      return c.json({ error: "验证码错误" }, 400);
+    }
+    
+    // 验证成功后删除验证码
+    captchaStore.delete(captchaId);
+    
     const problem: any = await c.env.DB.prepare(
       "SELECT * FROM problems WHERE id = ?",
     )
@@ -411,6 +498,17 @@ app.get("/api/submissions/:id", authMiddleware, async (c) => {
 app.get("/api/judge/health", async (c) => {
   try {
     const [owner, name] = c.env.GITHUB_REPO.split("/");
+    
+    // 检查GitHub配置
+    if (!c.env.GITHUB_TOKEN || c.env.GITHUB_TOKEN.includes("your_token") || 
+        !c.env.GITHUB_REPO || c.env.GITHUB_REPO.includes("your-github")) {
+      return c.json({ 
+        status: "not_configured", 
+        message: "GitHub未配置",
+        latency: null 
+      });
+    }
+    
     const url = `https://api.github.com/repos/${owner}/${name}/actions/runs?per_page=1`;
     
     const res = await fetch(url, {

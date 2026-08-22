@@ -5,6 +5,7 @@ import { api, type Problem, type SubmissionStatus, DIFFICULTY_COLOR, DIFFICULTY_
 import { useToast } from '@/lib/toast'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import CodeEditor from '@/components/CodeEditor.vue'
+import Captcha from '@/components/Captcha.vue'
 
 const { success, error: toastError, info } = useToast()
 
@@ -16,6 +17,8 @@ const code = ref('')
 const submitting = ref(false)
 const language = ref('cpp')
 const activeTab = ref('description') // 'description' or 'submit'
+const captchaInput = ref('')
+const captchaId = ref('')
 
 const templates: Record<string, string> = {
   cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}\n`,
@@ -37,6 +40,7 @@ async function load() {
   try {
     problem.value = await api.get(`/api/problems/${props.id}`)
     if (!code.value) code.value = templates[language.value] || ''
+    await getCaptcha()
   } catch (e: any) {
     toastError('加载失败: ' + e.message)
   } finally {
@@ -44,15 +48,28 @@ async function load() {
   }
 }
 
+async function getCaptcha() {
+  try {
+    const response = await api.get('/api/captcha')
+    captchaId.value = response.captchaId
+  } catch (e: any) {
+    console.error('获取验证码失败:', e)
+  }
+}
+
 async function submit() {
   if (!code.value.trim()) return info('请输入代码')
+  if (!captchaInput.value.trim()) return info('请输入验证码')
+  
   submitting.value = true
   
   try {
     const res = await api.post<any>('/api/submissions', {
       problemId: props.id,
       language: language.value,
-      code: code.value
+      code: code.value,
+      captchaId: captchaId.value,
+      captchaCode: captchaInput.value
     })
     
     success('提交成功')
@@ -60,6 +77,9 @@ async function submit() {
     
   } catch (e: any) {
     toastError(e.message)
+    // 刷新验证码
+    await getCaptcha()
+    captchaInput.value = ''
   } finally { submitting.value = false }
 }
 
@@ -190,6 +210,14 @@ onMounted(load)
             :language="language"
             height="500px"
           />
+          
+          <!-- 验证码 -->
+          <div class="px-4 py-3 border-t border-zinc-700 bg-zinc-750">
+            <Captcha 
+              v-model="captchaInput" 
+              @refresh="getCaptcha"
+            />
+          </div>
           
           <!-- 提交按钮 -->
           <div class="flex justify-end p-4 border-t border-zinc-700 bg-zinc-750">
