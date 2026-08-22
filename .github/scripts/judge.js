@@ -81,7 +81,7 @@ async function compile() {
   }
 }
 
-async function runCase(input: string) {
+async function runCase(input) {
   return new Promise((resolve) => {
     if (!runCmd) return resolve({ output: '', timeMs: 0, memoryKb: 0, timedOut: false, error: 'no runnable' });
     const start = Date.now();
@@ -122,7 +122,7 @@ async function main() {
   const results = [];
   let totalTime = 0, maxMem = 0;
   let allPass = true;
-  let failedReason: string | null = null;
+  let failedReason = null;
 
   for (let i = 0; i < testCases.length; i++) {
     const tc = testCases[i];
