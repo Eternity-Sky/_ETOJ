@@ -99,8 +99,8 @@ function editProblem(problem: any) {
     id: problem.id ? problem.id.toString() : '',
     title: problem.title || '',
     description: problem.description || '',
-    input_format: problem.input_format || '',
-    output_format: problem.output_format || '',
+    input_format: '',
+    output_format: '',
     time_limit_ms: problem.time_limit_ms || 1000,
     memory_limit_mb: problem.memory_limit_mb || 256,
     difficulty: problem.difficulty || 'easy',
@@ -119,9 +119,23 @@ function editProblem(problem: any) {
     testCases.value = [{input: '', output: ''}]
   }
   
-  // 合并为markdown格式（包含样例）
-  markdownContent.value = problem.description || ''
-  console.log('表单数据:', problemForm.value)
+  // 如果有旧的分离字段，合并到markdown中
+  let md = problem.description || ''
+  if (problem.input_format && !md.includes('## 输入格式')) {
+    md += `\n\n## 输入格式\n\n${problem.input_format}`
+  }
+  if (problem.output_format && !md.includes('## 输出格式')) {
+    md += `\n\n## 输出格式\n\n${problem.output_format}`
+  }
+  if (problem.sample_input && !md.includes('## 样例输入')) {
+    md += `\n\n## 样例输入\n\n\`\`\`\n${problem.sample_input}\n\`\`\``
+  }
+  if (problem.sample_output && !md.includes('## 样例输出')) {
+    md += `\n\n## 样例输出\n\n\`\`\`\n${problem.sample_output}\n\`\`\``
+  }
+  
+  markdownContent.value = md.trim()
+  console.log('markdown内容:', markdownContent.value)
   activeTab.value = 'edit'
 }
 

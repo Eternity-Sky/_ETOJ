@@ -155,36 +155,9 @@ onMounted(load)
             <h2 class="text-lg font-semibold">题目描述</h2>
             <div class="flex items-center gap-2 text-xs text-zinc-400">
               <button @click="copyMarkdown" class="hover:text-zinc-100">复制 Markdown</button>
-              <span>中文</span>
-              <span>展开</span>
-              <span>进入 IDE 模式</span>
             </div>
           </div>
           <MarkdownRenderer :content="problem.description" />
-        </div>
-
-        <!-- 输入格式 -->
-        <div v-if="problem.input_format" class="bg-zinc-800 rounded-lg p-6">
-          <h2 class="text-lg font-semibold mb-4">输入格式</h2>
-          <MarkdownRenderer :content="problem.input_format" />
-        </div>
-
-        <!-- 输出格式 -->
-        <div v-if="problem.output_format" class="bg-zinc-800 rounded-lg p-6">
-          <h2 class="text-lg font-semibold mb-4">输出格式</h2>
-          <MarkdownRenderer :content="problem.output_format" />
-        </div>
-
-        <!-- 样例 -->
-        <div class="grid sm:grid-cols-2 gap-4">
-          <div class="bg-zinc-800 rounded-lg p-4">
-            <h3 class="text-sm font-semibold text-zinc-400 mb-2">样例输入</h3>
-            <pre class="text-zinc-100 text-sm font-mono whitespace-pre-wrap">{{ problem.sample_input || '' }}</pre>
-          </div>
-          <div class="bg-zinc-800 rounded-lg p-4">
-            <h3 class="text-sm font-semibold text-zinc-400 mb-2">样例输出</h3>
-            <pre class="text-zinc-100 text-sm font-mono whitespace-pre-wrap">{{ problem.sample_output || '' }}</pre>
-          </div>
         </div>
       </div>
 
