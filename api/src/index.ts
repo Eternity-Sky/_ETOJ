@@ -728,8 +728,9 @@ app.post("/api/problems", authMiddleware, async (c) => {
       return c.json({ error: "题号已存在" }, 400);
     }
     
-    // 生成唯一的slug
-    const slug = `problem-${id}-${Date.now()}`;
+    // 生成唯一的slug，使用随机数确保唯一性
+    const randomStr = Math.random().toString(36).substring(2, 15);
+    const slug = `problem-${id}-${randomStr}`;
     
     const result = await c.env.DB.prepare(
       `INSERT INTO problems (id, title, slug, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
