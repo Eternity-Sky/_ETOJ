@@ -790,15 +790,15 @@ app.post("/api/admin/renumber-problems", authMiddleware, adminMiddleware, async 
       const newId = i + 1;
       
       if (oldId !== newId) {
-        // 更新题目ID
-        await c.env.DB.prepare(
-          "UPDATE problems SET id = ?, slug = ? WHERE id = ?"
-        ).bind(newId, `problem-${newId}-${Date.now()}`, oldId).run();
-        
-        // 更新相关提交记录的problem_id
+        // 先更新相关提交记录的problem_id（避免外键约束）
         await c.env.DB.prepare(
           "UPDATE submissions SET problem_id = ? WHERE problem_id = ?"
         ).bind(newId, oldId).run();
+        
+        // 然后更新题目ID
+        await c.env.DB.prepare(
+          "UPDATE problems SET id = ?, slug = ? WHERE id = ?"
+        ).bind(newId, `problem-${newId}-${Date.now()}`, oldId).run();
       }
     }
     

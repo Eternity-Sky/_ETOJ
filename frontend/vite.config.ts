@@ -12,14 +12,27 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'monaco-editor': ['monaco-editor'],
-          'vue-vendor': ['vue', 'vue-router'],
-          'markdown-vendor': ['marked', 'katex']
+        manualChunks: (id) => {
+          // Monaco editor相关
+          if (id.includes('monaco-editor')) {
+            return 'monaco-editor'
+          }
+          // Vue相关
+          if (id.includes('vue') || id.includes('vue-router')) {
+            return 'vue-vendor'
+          }
+          // Markdown相关
+          if (id.includes('marked') || id.includes('katex')) {
+            return 'markdown-vendor'
+          }
+          // 其他vendor
+          if (id.includes('node_modules')) {
+            return 'vendor'
+          }
         }
       }
     },
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 2000,
     minify: 'terser',
     terserOptions: {
       compress: {
