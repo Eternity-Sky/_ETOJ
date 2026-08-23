@@ -772,6 +772,47 @@ app.delete("/api/problems/:id", authMiddleware, async (c) => {
   }
 });
 
+// 重新编号题目端点
+app.post("/api/admin/renumber-problems", authMiddleware, adminMiddleware, async (c) => {
+  try {
+    // 获取所有题目按ID排序
+    const problems: any[] = await c.env.DB.prepare(
+      "SELECT id FROM problems ORDER BY id ASC"
+    ).all();
+    
+    if (!problems.results || problems.results.length === 0) {
+      return c.json({ message: "没有题目需要重新编号" });
+    }
+    
+    // 从1开始重新编号
+    for (let i = 0; i < problems.results.length; i++) {
+      const oldId = problems.results[i].id;
+      const newId = i + 1;
+      
+      if (oldId !== newId) {
+        // 更新题目ID
+        await c.env.DB.prepare(
+          "UPDATE problems SET id = ?, slug = ? WHERE id = ?"
+        ).bind(newId, `problem-${newId}-${Date.now()}`, oldId).run();
+        
+        // 更新相关提交记录的problem_id
+        await c.env.DB.prepare(
+          "UPDATE submissions SET problem_id = ? WHERE problem_id = ?"
+        ).bind(newId, oldId).run();
+      }
+    }
+    
+    // 清除缓存
+    clearCache('problems:');
+    clearCache('problem:');
+    
+    return c.json({ message: "题目重新编号成功" });
+  } catch (e: any) {
+    console.error("重新编号失败:", e);
+    return c.json({ error: e.message }, 500);
+  }
+});
+
 // 重测端点
 app.post("/api/submissions/retest", authMiddleware, async (c) => {
   try {

@@ -79,6 +79,21 @@ async function clearSubmissions() {
   }
 }
 
+async function renumberProblems() {
+  if (!confirm('确定要重新编号所有题目吗？这会将题目ID从1开始连续编号，此操作不可撤销。')) return
+  
+  try {
+    loading.value = true
+    const result = await api.post('/api/admin/renumber-problems')
+    message.value = result.message || '重新编号成功'
+    await loadProblems()
+  } catch (e: any) {
+    message.value = e.message || '重新编号失败'
+  } finally {
+    loading.value = false
+  }
+}
+
 function editProblem(problem: any) {
   console.log('编辑题目数据:', problem)
   editingProblem.value = problem
@@ -359,7 +374,10 @@ onMounted(() => {
       <div v-if="activeTab === 'problems'" class="space-y-4">
         <div class="flex justify-between items-center">
           <h2 class="text-lg font-semibold text-zinc-100">题目列表</h2>
-          <button @click="createNewProblem" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm transition-colors">创建新题目</button>
+          <div class="flex gap-2">
+            <button @click="renumberProblems" :disabled="loading" class="border border-zinc-600 hover:border-zinc-500 text-zinc-300 px-4 py-2 rounded-md text-sm transition-colors">重新编号</button>
+            <button @click="createNewProblem" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm transition-colors">创建新题目</button>
+          </div>
         </div>
         
         <div class="bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden">
