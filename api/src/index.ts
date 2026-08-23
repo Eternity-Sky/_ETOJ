@@ -293,6 +293,14 @@ app.get("/api/problems/:id", async (c) => {
 
 app.post("/api/problems", authMiddleware, adminMiddleware, async (c) => {
   const body = await c.req.json();
+  // 处理样例输入输出：如果是数组，取第一个；如果是字符串，直接使用
+  const sampleInput = Array.isArray(body.sample_inputs) 
+    ? (body.sample_inputs[0] || "") 
+    : (body.sample_input || "");
+  const sampleOutput = Array.isArray(body.sample_outputs) 
+    ? (body.sample_outputs[0] || "") 
+    : (body.sample_output || "");
+  
   const result = await c.env.DB.prepare(
     `INSERT INTO problems (title, slug, difficulty, description, input_format, output_format, sample_input, sample_output, test_cases_json, time_limit_ms, memory_limit_mb) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
@@ -303,8 +311,8 @@ app.post("/api/problems", authMiddleware, adminMiddleware, async (c) => {
       body.description || "",
       body.input_format || "",
       body.output_format || "",
-      body.sample_input || "",
-      body.sample_output || "",
+      sampleInput,
+      sampleOutput,
       JSON.stringify(body.test_cases || []),
       body.time_limit_ms || 1000,
       body.memory_limit_mb || 256,
@@ -733,12 +741,20 @@ app.post("/api/problems", authMiddleware, async (c) => {
 app.put("/api/problems/:id", authMiddleware, async (c) => {
   try {
     const id = Number(c.req.param("id"));
-    const { title, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json } = await c.req.json();
+    const { title, description, input_format, output_format, sample_input, sample_output, sample_inputs, sample_outputs, time_limit_ms, memory_limit_mb, difficulty, test_cases_json } = await c.req.json();
+    
+    // 处理样例输入输出：如果是数组，取第一个；如果是字符串，直接使用
+    const finalSampleInput = Array.isArray(sample_inputs) 
+      ? (sample_inputs[0] || "") 
+      : (sample_input || "");
+    const finalSampleOutput = Array.isArray(sample_outputs) 
+      ? (sample_outputs[0] || "") 
+      : (sample_output || "");
     
     const result = await c.env.DB.prepare(
       `UPDATE problems SET title = ?, description = ?, input_format = ?, output_format = ?, sample_input = ?, sample_output = ?, time_limit_ms = ?, memory_limit_mb = ?, difficulty = ?, test_cases_json = ? WHERE id = ?`,
     )
-      .bind(title || "", description || "", input_format || "", output_format || "", sample_input || "", sample_output || "", time_limit_ms || 1000, memory_limit_mb || 256, difficulty || "easy", test_cases_json || "[]", id)
+      .bind(title || "", description || "", input_format || "", output_format || "", finalSampleInput, finalSampleOutput, time_limit_ms || 1000, memory_limit_mb || 256, difficulty || "easy", test_cases_json || "[]", id)
       .run();
     
     if (!result.success) {

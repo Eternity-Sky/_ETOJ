@@ -368,7 +368,7 @@ watch(testCases, () => {
 }, { deep: true })
 
 // 监听表单变化，自动更新markdown（避免循环）
-watch(() => [problemForm.value.description, problemForm.value.input_format, problemForm.value.output_format, problemForm.value.sample_input, problemForm.value.sample_output], () => {
+watch(() => [problemForm.value.description, problemForm.value.input_format, problemForm.value.output_format, problemForm.value.sample_inputs, problemForm.value.sample_outputs], () => {
   if (!editingProblem.value) { // 只在新建时自动更新
     markdownContent.value = generateMarkdown()
   }
