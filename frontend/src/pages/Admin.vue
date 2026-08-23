@@ -331,57 +331,22 @@ function handleSampleOutputFile(event: Event, index: number) {
   }
 }
 
-function handleTestCaseInputFile(event: Event, index: number) {
+function handleTestCaseFile(event: Event) {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
   if (file) {
     const reader = new FileReader()
     reader.onload = (e) => {
       const content = e.target?.result as string
-      // 解析文件内容，每行一个测试点输入
+      // 解析文件内容：奇数行是输入，偶数行是输出
       const lines = content.split('\n').filter(line => line.trim())
       if (lines.length > 0) {
-        // 如果当前只有1个测试点，直接替换
-        if (testCases.value.length === 1) {
-          testCases.value[0].input = lines[0]
-          // 如果有多行，创建多个测试点
-          if (lines.length > 1) {
-            for (let i = 1; i < lines.length; i++) {
-              testCases.value.push({ input: lines[i], output: '' })
-            }
-          }
-        } else {
-          // 如果已经有多个测试点，按行分配
-          lines.forEach((line, i) => {
-            if (i < testCases.value.length) {
-              testCases.value[i].input = line
-            } else {
-              testCases.value.push({ input: line, output: '' })
-            }
-          })
+        testCases.value = []
+        for (let i = 0; i < lines.length; i += 2) {
+          const input = lines[i] || ''
+          const output = lines[i + 1] || ''
+          testCases.value.push({ input, output })
         }
-      }
-    }
-    reader.readAsText(file)
-  }
-}
-
-function handleTestCaseOutputFile(event: Event, index: number) {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const content = e.target?.result as string
-      // 解析文件内容，每行一个测试点输出
-      const lines = content.split('\n').filter(line => line.trim())
-      if (lines.length > 0) {
-        // 按行分配到测试点
-        lines.forEach((line, i) => {
-          if (i < testCases.value.length) {
-            testCases.value[i].output = line
-          }
-        })
       }
     }
     reader.readAsText(file)
@@ -647,27 +612,15 @@ onMounted(() => {
             </div>
             
             <!-- 批量文件上传 -->
-            <div class="grid grid-cols-2 gap-4 mb-4 p-4 bg-zinc-900 border border-zinc-700">
-              <div>
-                <label class="text-xs text-zinc-400 mb-1 block">批量上传输入文件</label>
-                <input 
-                  type="file" 
-                  @change="(e) => handleTestCaseInputFile(e, 0)"
-                  class="text-xs text-zinc-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-400 hover:file:bg-zinc-700"
-                  accept=".txt,.in"
-                >
-                <div class="text-xs text-zinc-500 mt-1">每行一个测试点的输入数据</div>
-              </div>
-              <div>
-                <label class="text-xs text-zinc-400 mb-1 block">批量上传输出文件</label>
-                <input 
-                  type="file" 
-                  @change="(e) => handleTestCaseOutputFile(e, 0)"
-                  class="text-xs text-zinc-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-400 hover:file:bg-zinc-700"
-                  accept=".txt,.out"
-                >
-                <div class="text-xs text-zinc-500 mt-1">每行一个测试点的输出数据</div>
-              </div>
+            <div class="mb-4 p-4 bg-zinc-900 border border-zinc-700">
+              <label class="text-xs text-zinc-400 mb-1 block">批量上传测试点文件</label>
+              <input 
+                type="file" 
+                @change="handleTestCaseFile"
+                class="text-xs text-zinc-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-400 hover:file:bg-zinc-700"
+                accept=".txt"
+              >
+              <div class="text-xs text-zinc-500 mt-1">文件格式：奇数行是输入，偶数行是输出</div>
             </div>
             
             <div class="space-y-2">
