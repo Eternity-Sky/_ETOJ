@@ -18,8 +18,8 @@ const problemForm = ref({
   description: '',
   input_format: '',
   output_format: '',
-  sample_input: '',
-  sample_output: '',
+  sample_inputs: [''],
+  sample_outputs: [''],
   time_limit_ms: 1000,
   memory_limit_mb: 256,
   difficulty: 'easy',
@@ -27,7 +27,7 @@ const problemForm = ref({
 })
 
 const markdownContent = ref('')
-const testCases = ref<{input: string, output: string}[]>([{input: '', output: ''}])
+const testCases = ref<{input: string, output: string, input_file?: File, output_file?: File}[]>([{input: '', output: ''}])
 
 async function loadMe() {
   try {
@@ -103,8 +103,8 @@ function editProblem(problem: any) {
     description: problem.description || '',
     input_format: problem.input_format || '',
     output_format: problem.output_format || '',
-    sample_input: problem.sample_input || '',
-    sample_output: problem.sample_output || '',
+    sample_inputs: problem.sample_inputs ? (Array.isArray(problem.sample_inputs) ? problem.sample_inputs : [problem.sample_inputs]) : [''],
+    sample_outputs: problem.sample_outputs ? (Array.isArray(problem.sample_outputs) ? problem.sample_outputs : [problem.sample_outputs]) : [''],
     time_limit_ms: problem.time_limit_ms || 1000,
     memory_limit_mb: problem.memory_limit_mb || 256,
     difficulty: problem.difficulty || 'easy',
@@ -137,8 +137,8 @@ function createNewProblem() {
     description: '',
     input_format: '',
     output_format: '',
-    sample_input: '',
-    sample_output: '',
+    sample_inputs: [''],
+    sample_outputs: [''],
     time_limit_ms: 1000,
     memory_limit_mb: 256,
     difficulty: 'easy',
@@ -164,12 +164,15 @@ function generateMarkdown(): string {
     md += `## 输出格式\n\n${problemForm.value.output_format}\n\n`
   }
   
-  if (problemForm.value.sample_input) {
-    md += `## 样例输入\n\n\`\`\`\n${problemForm.value.sample_input}\n\`\`\`\n\n`
-  }
-  
-  if (problemForm.value.sample_output) {
-    md += `## 样例输出\n\n\`\`\`\n${problemForm.value.sample_output}\n\`\`\`\n\n`
+  // 多个样例输入输出
+  const sampleCount = Math.max(problemForm.value.sample_inputs.length, problemForm.value.sample_outputs.length)
+  for (let i = 0; i < sampleCount; i++) {
+    if (problemForm.value.sample_inputs[i]) {
+      md += `## 样例输入 ${i + 1}\n\n\`\`\`\n${problemForm.value.sample_inputs[i]}\n\`\`\`\n\n`
+    }
+    if (problemForm.value.sample_outputs[i]) {
+      md += `## 样例输出 ${i + 1}\n\n\`\`\`\n${problemForm.value.sample_outputs[i]}\n\`\`\`\n\n`
+    }
   }
   
   return md.trim()
@@ -196,13 +199,24 @@ function parseMarkdown(): void {
       problemForm.value.input_format = content
     } else if (title === '输出格式') {
       problemForm.value.output_format = content
-    } else if (title === '样例输入') {
+    } else if (title.startsWith('样例输入')) {
       // 提取代码块内容，支持多种格式
       const codeMatch = content.match(/```(?:\w+)?\n([\s\S]*?)```/)
-      problemForm.value.sample_input = codeMatch ? codeMatch[1].trim() : content
-    } else if (title === '样例输出') {
+      const input = codeMatch ? codeMatch[1].trim() : content
+      // 提取样例编号
+      const match = title.match(/样例输入\s*(\d+)/)
+      const index = match ? parseInt(match[1]) - 1 : 0
+      if (index >= 0) {
+        problemForm.value.sample_inputs[index] = input
+      }
+    } else if (title.startsWith('样例输出')) {
       const codeMatch = content.match(/```(?:\w+)?\n([\s\S]*?)```/)
-      problemForm.value.sample_output = codeMatch ? codeMatch[1].trim() : content
+      const output = codeMatch ? codeMatch[1].trim() : content
+      const match = title.match(/样例输出\s*(\d+)/)
+      const index = match ? parseInt(match[1]) - 1 : 0
+      if (index >= 0) {
+        problemForm.value.sample_outputs[index] = output
+      }
     }
   })
 }
@@ -278,6 +292,66 @@ function addTestCase() {
 function removeTestCase(index: number) {
   if (testCases.value.length > 1) {
     testCases.value.splice(index, 1)
+  }
+}
+
+function addSample() {
+  problemForm.value.sample_inputs.push('')
+  problemForm.value.sample_outputs.push('')
+}
+
+function removeSample(index: number) {
+  if (index > 0) {
+    problemForm.value.sample_inputs.splice(index, 1)
+    problemForm.value.sample_outputs.splice(index, 1)
+  }
+}
+
+function handleSampleInputFile(event: Event, index: number) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      problemForm.value.sample_inputs[index] = e.target?.result as string
+    }
+    reader.readAsText(file)
+  }
+}
+
+function handleSampleOutputFile(event: Event, index: number) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      problemForm.value.sample_outputs[index] = e.target?.result as string
+    }
+    reader.readAsText(file)
+  }
+}
+
+function handleTestCaseInputFile(event: Event, index: number) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      testCases.value[index].input = e.target?.result as string
+    }
+    reader.readAsText(file)
+  }
+}
+
+function handleTestCaseOutputFile(event: Event, index: number) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      testCases.value[index].output = e.target?.result as string
+    }
+    reader.readAsText(file)
   }
 }
 
@@ -484,24 +558,51 @@ onMounted(() => {
           </div>
           
           <!-- 样例输入输出 -->
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-zinc-300 mb-1">样例输入</label>
-              <textarea 
-                v-model="problemForm.sample_input" 
-                class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 rounded-md px-3 py-2 font-mono text-sm focus:outline-none focus:border-blue-500"
-                rows="3"
-                placeholder="样例输入数据"
-              ></textarea>
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-sm font-medium text-zinc-300">样例输入输出</label>
+              <button @click="addSample" class="text-xs text-blue-400 hover:text-blue-300">+ 添加样例</button>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-zinc-300 mb-1">样例输出</label>
-              <textarea 
-                v-model="problemForm.sample_output" 
-                class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 rounded-md px-3 py-2 font-mono text-sm focus:outline-none focus:border-blue-500"
-                rows="3"
-                placeholder="样例输出数据"
-              ></textarea>
+            <div class="space-y-3">
+              <div v-for="(sample, index) in Math.max(problemForm.sample_inputs.length, problemForm.sample_outputs.length)" :key="index" class="grid grid-cols-2 gap-4 p-4 bg-zinc-900 border border-zinc-700">
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="text-xs text-zinc-400 mb-1">样例输入 {{ index + 1 }}</label>
+                    <button @click="removeSample(index)" v-if="index > 0" class="text-xs text-red-400 hover:text-red-300">删除</button>
+                  </div>
+                  <textarea 
+                    v-model="problemForm.sample_inputs[index]" 
+                    class="w-full bg-zinc-800 text-zinc-100 border border-zinc-600 px-3 py-2 font-mono text-sm focus:outline-none focus:border-blue-500"
+                    rows="3"
+                    :placeholder="`样例输入 ${index + 1} 数据`"
+                  ></textarea>
+                  <div class="mt-2">
+                    <label class="text-xs text-zinc-500 mb-1">或上传文件</label>
+                    <input 
+                      type="file" 
+                      @change="(e) => handleSampleInputFile(e, index)"
+                      class="text-xs text-zinc-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-400 hover:file:bg-zinc-700"
+                    >
+                  </div>
+                </div>
+                <div>
+                  <label class="text-xs text-zinc-400 mb-1">样例输出 {{ index + 1 }}</label>
+                  <textarea 
+                    v-model="problemForm.sample_outputs[index]" 
+                    class="w-full bg-zinc-800 text-zinc-100 border border-zinc-600 px-3 py-2 font-mono text-sm focus:outline-none focus:border-blue-500"
+                    rows="3"
+                    :placeholder="`样例输出 ${index + 1} 数据`"
+                  ></textarea>
+                  <div class="mt-2">
+                    <label class="text-xs text-zinc-500 mb-1">或上传文件</label>
+                    <input 
+                      type="file" 
+                      @change="(e) => handleSampleOutputFile(e, index)"
+                      class="text-xs text-zinc-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-400 hover:file:bg-zinc-700"
+                    >
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           
@@ -512,7 +613,7 @@ onMounted(() => {
               <button @click="addTestCase" class="text-xs text-blue-400 hover:text-blue-300">+ 添加测试点</button>
             </div>
             <div class="space-y-2">
-              <div v-for="(tc, index) in testCases" :key="index" class="bg-zinc-900 border border-zinc-600 rounded-md p-3">
+              <div v-for="(tc, index) in testCases" :key="index" class="bg-zinc-900 border border-zinc-600 p-3">
                 <div class="flex items-center justify-between mb-2">
                   <span class="text-xs text-zinc-400">测试点 #{{ index + 1 }}</span>
                   <button @click="removeTestCase(index)" v-if="testCases.length > 1" class="text-xs text-red-400 hover:text-red-300">删除</button>
@@ -522,19 +623,35 @@ onMounted(() => {
                     <label class="text-xs text-zinc-400 mb-1 block">输入</label>
                     <textarea 
                       v-model="tc.input" 
-                      class="w-full bg-zinc-800 text-zinc-100 border border-zinc-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-blue-500"
+                      class="w-full bg-zinc-800 text-zinc-100 border border-zinc-600 px-2 py-1 text-xs font-mono focus:outline-none focus:border-blue-500"
                       rows="2"
                       placeholder="输入数据"
                     ></textarea>
+                    <div class="mt-1">
+                      <label class="text-xs text-zinc-500 mb-1">或上传文件</label>
+                      <input 
+                        type="file" 
+                        @change="(e) => handleTestCaseInputFile(e, index)"
+                        class="text-xs text-zinc-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-400 hover:file:bg-zinc-700"
+                      >
+                    </div>
                   </div>
                   <div>
                     <label class="text-xs text-zinc-400 mb-1 block">输出</label>
                     <textarea 
                       v-model="tc.output" 
-                      class="w-full bg-zinc-800 text-zinc-100 border border-zinc-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-blue-500"
+                      class="w-full bg-zinc-800 text-zinc-100 border border-zinc-600 px-2 py-1 text-xs font-mono focus:outline-none focus:border-blue-500"
                       rows="2"
                       placeholder="输出数据"
                     ></textarea>
+                    <div class="mt-1">
+                      <label class="text-xs text-zinc-500 mb-1">或上传文件</label>
+                      <input 
+                        type="file" 
+                        @change="(e) => handleTestCaseOutputFile(e, index)"
+                        class="text-xs text-zinc-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-400 hover:file:bg-zinc-700"
+                      >
+                    </div>
                   </div>
                 </div>
               </div>
