@@ -722,31 +722,18 @@ app.post("/api/problems", authMiddleware, async (c) => {
       return c.json({ error: "Missing required fields" }, 400);
     }
     
-    // 自动生成题号：从1开始找到第一个可用的ID
-    let problemId = 1;
-    let foundAvailable = false;
-    
-    while (!foundAvailable) {
-      const existing = await c.env.DB.prepare("SELECT id FROM problems WHERE id = ?").bind(problemId).first();
-      if (!existing) {
-        foundAvailable = true;
-      } else {
-        problemId++;
-      }
-    }
-    
-    // 生成唯一的slug
-    const slug = `problem-${problemId}-${Date.now()}`;
-    
+    // 使用数据库自增ID，避免外键约束问题
     const result = await c.env.DB.prepare(
-      `INSERT INTO problems (id, title, slug, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO problems (title, slug, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-      .bind(problemId, title || "", slug, description || "", input_format || "", output_format || "", sample_input || "", sample_output || "", time_limit_ms || 1000, memory_limit_mb || 256, difficulty || "easy", test_cases_json || "[]")
+      .bind(title || "", `problem-${Date.now()}`, description || "", input_format || "", output_format || "", sample_input || "", sample_output || "", time_limit_ms || 1000, memory_limit_mb || 256, difficulty || "easy", test_cases_json || "[]")
       .run();
     
     if (!result.success) {
       return c.json({ error: "Failed to create problem" }, 400);
     }
+    
+    const problemId = Number((result.meta as any).last_row_id);
     
     return c.json({ id: problemId, message: "题目创建成功" });
   } catch (e: any) {
@@ -755,7 +742,7 @@ app.post("/api/problems", authMiddleware, async (c) => {
 });
 
 // 管理端点 - 更新题目
-app.put("/api/problems/:id", authMiddleware, async (c) => {
+app.put("/api/problems/:id", authMiddleware, adminMiddleware, async (c) => {
   try {
     const id = Number(c.req.param("id"));
     const { title, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json } = await c.req.json();
@@ -809,13 +796,18 @@ app.post("/api/admin/renumber-problems", authMiddleware, adminMiddleware, async 
       return c.json({ message: "没有题目需要重新编号" });
     }
     
-    // 从大到小重新编号，避免ID冲突导致的外键约束问题
+    // 记录ID映射关系
+    const idMapping: Record<number, number> = {};
+    
+    // 从大到小重新编号，避免ID冲突
     for (let i = problems.results.length - 1; i >= 0; i--) {
       const oldId = problems.results[i].id;
       const newId = i + 1;
       
       if (oldId !== newId) {
-        // 先更新相关提交记录的problem_id（避免外键约束）
+        idMapping[oldId] = newId;
+        
+        // 先更新相关提交记录的problem_id
         await c.env.DB.prepare(
           "UPDATE submissions SET problem_id = ? WHERE problem_id = ?"
         ).bind(newId, oldId).run();
@@ -831,7 +823,7 @@ app.post("/api/admin/renumber-problems", authMiddleware, adminMiddleware, async 
     clearCache('problems:');
     clearCache('problem:');
     
-    return c.json({ message: "题目重新编号成功" });
+    return c.json({ message: "题目重新编号成功", idMapping });
   } catch (e: any) {
     console.error("重新编号失败:", e);
     return c.json({ error: e.message }, 500);

@@ -249,8 +249,6 @@ async function saveProblem() {
     } else {
       await api.post('/api/problems', saveData)
       message.value = '题目创建成功'
-      // 新建题目后自动重新编号
-      await renumberProblems()
     }
     
     await loadProblems()
