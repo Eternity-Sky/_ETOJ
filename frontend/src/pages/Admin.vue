@@ -84,7 +84,7 @@ async function updateUserRole(userId: number, role: string) {
 async function deleteUser(userId: number) {
   if (!confirm('确定要删除此用户吗？')) return
   try {
-    await api.delete(`/api/admin/users/${userId}`)
+    await api.del(`/api/admin/users/${userId}`)
     message.value = '用户删除成功'
     await loadUsers()
   } catch (e: any) {
@@ -249,6 +249,8 @@ async function saveProblem() {
     } else {
       await api.post('/api/problems', saveData)
       message.value = '题目创建成功'
+      // 新建题目后自动重新编号
+      await renumberProblems()
     }
     
     await loadProblems()

@@ -809,8 +809,8 @@ app.post("/api/admin/renumber-problems", authMiddleware, adminMiddleware, async 
       return c.json({ message: "没有题目需要重新编号" });
     }
     
-    // 从1开始重新编号
-    for (let i = 0; i < problems.results.length; i++) {
+    // 从大到小重新编号，避免ID冲突导致的外键约束问题
+    for (let i = problems.results.length - 1; i >= 0; i--) {
       const oldId = problems.results[i].id;
       const newId = i + 1;
       
