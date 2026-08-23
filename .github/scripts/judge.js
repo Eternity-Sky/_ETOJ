@@ -62,10 +62,26 @@ async function runCase(input) {
       const estimatedMemory = Math.max(0, Math.floor(output.length / 1024) * 100); // 粗略估算
       resolve({ output, timeMs: Date.now() - start, memoryKb: estimatedMemory, timedOut, error: code !== 0 && !timedOut ? (error || `exit ${code}`) : undefined });
     });
+    
+    // 捕获stdin错误，避免EPIPE导致程序崩溃
+    child.stdin.on('error', (err) => {
+      if (err.code === 'EPIPE') {
+        // 程序已经关闭了stdin，忽略这个错误
+        // 这通常发生在程序不需要输入或已经退出时
+      } else {
+        console.error('stdin error:', err);
+      }
+    });
+    
     try {
       child.stdin.write(input);
       child.stdin.end();
-    } catch {}
+    } catch (err) {
+      // 捕获写入错误，通常是因为进程已经退出
+      if (err.code !== 'EPIPE') {
+        console.error('stdin write error:', err);
+      }
+    }
   });
 }
 
