@@ -30,34 +30,34 @@ async function register() {
   <div class="mx-auto max-w-md mt-8 sm:mt-16">
     <div class="bg-zinc-800 border border-zinc-700 p-6 sm:p-8 space-y-5">
       <div class="text-center space-y-1">
-        <div class="inline-flex h-11 w-11 items-center justify-center bg-zinc-700 text-white font-bold text-lg mb-2">E</div>
+        <div class="inline-flex h-11 w-11 items-center justify-center bg-blue-600 text-white font-bold text-lg mb-2">E</div>
         <h1 class="text-2xl font-bold text-zinc-100">创建账号</h1>
         <p class="text-sm text-zinc-400">加入 ETOJ，开始练习算法</p>
       </div>
       <form @submit.prevent="register" class="space-y-4">
         <div>
           <label class="text-sm font-medium text-zinc-300 mb-1 block">用户名</label>
-          <input v-model="username" autocomplete="username" class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 px-3 py-2 focus:outline-none focus:border-zinc-500" placeholder="输入用户名" />
+          <input v-model="username" autocomplete="username" class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 px-3 py-2 focus:outline-none focus:border-blue-500" placeholder="输入用户名" />
         </div>
         <div>
           <label class="text-sm font-medium text-zinc-300 mb-1 block">邮箱</label>
-          <input v-model="email" type="email" autocomplete="email" class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 px-3 py-2 focus:outline-none focus:border-zinc-500" placeholder="you@example.com" />
+          <input v-model="email" type="email" autocomplete="email" class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 px-3 py-2 focus:outline-none focus:border-blue-500" placeholder="you@example.com" />
         </div>
         <div>
           <label class="text-sm font-medium text-zinc-300 mb-1 block">密码</label>
-          <input v-model="password" type="password" autocomplete="new-password" class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 px-3 py-2 focus:outline-none focus:border-zinc-500" placeholder="至少 6 位" />
+          <input v-model="password" type="password" autocomplete="new-password" class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 px-3 py-2 focus:outline-none focus:border-blue-500" placeholder="至少 6 位" />
         </div>
         <div>
           <label class="text-sm font-medium text-zinc-300 mb-1 block">确认密码</label>
-          <input v-model="confirm" type="password" autocomplete="new-password" class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 px-3 py-2 focus:outline-none focus:border-zinc-500" placeholder="再次输入密码" />
+          <input v-model="confirm" type="password" autocomplete="new-password" class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 px-3 py-2 focus:outline-none focus:border-blue-500" placeholder="再次输入密码" />
         </div>
         <div v-if="err" class="text-sm text-rose-400 bg-rose-900/30 border border-rose-800 px-3 py-2">{{ err }}</div>
-        <button type="submit" :disabled="loading" class="w-full bg-zinc-700 text-white py-2.5 hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed">
+        <button type="submit" :disabled="loading" class="w-full bg-blue-600 text-white py-2.5 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
           {{ loading ? '注册中...' : '注册' }}
         </button>
       </form>
       <div class="text-sm text-center text-zinc-400">
-        已有账号？<RouterLink to="/login" class="text-zinc-400 hover:text-zinc-200 font-medium">立即登录</RouterLink>
+        已有账号？<RouterLink to="/login" class="text-blue-400 hover:text-blue-300 font-medium">立即登录</RouterLink>
       </div>
     </div>
   </div>

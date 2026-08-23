@@ -109,12 +109,12 @@ onMounted(load);
                 {{ p.id }}
               </td>
               <td class="px-4 py-3">
-                <RouterLink :to="`/problem/${p.id}`" class="text-zinc-400 hover:text-zinc-200 font-medium">{{
+                <RouterLink :to="`/problem/${p.id}`" class="text-blue-400 hover:text-blue-300 font-medium">{{
                   p.title
                 }}</RouterLink>
               </td>
               <td class="px-4 py-3">
-                <span :class="['px-2 py-1 text-xs bg-zinc-700 text-zinc-300']">{{
+                <span :class="['px-2 py-1 text-xs', DIFFICULTY_COLOR[p.difficulty]]">{{
                   DIFFICULTY_LABEL[p.difficulty]
                 }}</span>
               </td>
@@ -122,7 +122,7 @@ onMounted(load);
                 {{ p.submission_count }}
               </td>
               <td class="px-4 py-3 text-right hidden sm:table-cell">
-                <span class="font-medium text-zinc-300">
+                <span class="font-medium text-emerald-400">
                   {{
                     p.submission_count
                       ? Math.min(Math.round((p.accepted_count * 100) / p.submission_count), 100)

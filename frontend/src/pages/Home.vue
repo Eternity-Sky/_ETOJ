@@ -27,19 +27,19 @@ onMounted(async () => {
     <div class="max-w-6xl mx-auto px-4 py-8 space-y-12">
       <section class="border border-zinc-700 bg-zinc-800 p-8 sm:p-12">
         <div class="max-w-2xl space-y-5">
-          <div class="inline-flex items-center gap-2 border border-zinc-600 bg-zinc-700 px-3 py-1 text-xs font-medium text-zinc-300">
+          <div class="inline-flex items-center gap-2 border border-blue-800 bg-blue-900/30 px-3 py-1 text-xs font-medium text-blue-300">
             无服务器架构 · Cloudflare Workers + GitHub Actions
           </div>
           <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-100">
             写代码，提交，评测
-            <span class="block text-zinc-400 mt-1">轻量纯粹的在线评测系统</span>
+            <span class="block text-blue-400 mt-1">轻量纯粹的在线评测系统</span>
           </h1>
           <p class="text-zinc-400 leading-relaxed">
             ETOJ 是一个完全基于无服务器架构的在线评测系统。数据存储在 Cloudflare
             D1， 评测任务由 GitHub Actions 编译运行，全程无需维护服务器。
           </p>
           <div class="flex flex-wrap gap-3">
-            <RouterLink to="/problems" class="bg-zinc-700 text-white px-5 py-2.5 hover:bg-zinc-600">开始刷题 →</RouterLink>
+            <RouterLink to="/problems" class="bg-blue-600 text-white px-5 py-2.5 hover:bg-blue-700">开始刷题 →</RouterLink>
             <RouterLink to="/rankings" class="border border-zinc-600 text-zinc-300 px-5 py-2.5 hover:bg-zinc-700 hover:text-zinc-100">查看排行榜</RouterLink>
           </div>
           <div class="grid grid-cols-3 gap-4 pt-4 max-w-md">
@@ -81,10 +81,7 @@ onMounted(async () => {
               <div class="font-semibold text-zinc-100">
                 #{{ p.id }} · {{ p.title }}
               </div>
-              <span :class="['px-2 py-1 text-xs', 
-                p.difficulty === 'easy' ? 'bg-zinc-700 text-zinc-300' : 
-                p.difficulty === 'medium' ? 'bg-zinc-700 text-zinc-300' : 'bg-zinc-700 text-zinc-300'
-              ]">{{
+              <span :class="['px-2 py-1 text-xs', DIFFICULTY_COLOR[p.difficulty]]">{{
                 DIFFICULTY_LABEL[p.difficulty]
               }}</span>
             </div>
