@@ -34,10 +34,10 @@ async function login() {
 
 <template>
   <div class="mx-auto max-w-md mt-8 sm:mt-16">
-    <div class="bg-zinc-800 border border-zinc-700 rounded-lg p-6 sm:p-8 space-y-5">
+    <div class="bg-zinc-800 border border-zinc-700 p-6 sm:p-8 space-y-5">
       <div class="text-center space-y-1">
         <div
-          class="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white font-bold text-lg mb-2"
+          class="inline-flex h-11 w-11 items-center justify-center bg-zinc-700 text-white font-bold text-lg mb-2"
         >
           E
         </div>
@@ -52,7 +52,7 @@ async function login() {
           <input
             v-model="username"
             autocomplete="username"
-            class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 rounded-md px-3 py-2 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 px-3 py-2 focus:outline-none focus:border-zinc-500"
             placeholder="输入用户名或邮箱"
           />
         </div>
@@ -65,26 +65,26 @@ async function login() {
             type="password"
             autocomplete="current-password"
             @keyup.enter="login"
-            class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 rounded-md px-3 py-2 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 px-3 py-2 focus:outline-none focus:border-zinc-500"
             placeholder="输入密码"
           />
         </div>
         <div
           v-if="err"
-          class="text-sm text-rose-400 bg-rose-900/30 border border-rose-800 rounded-lg px-3 py-2"
+          class="text-sm text-rose-400 bg-rose-900/30 border border-rose-800 px-3 py-2"
         >
           {{ err }}
         </div>
         <button
           type="submit"
           :disabled="loading"
-          class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          class="w-full bg-zinc-700 text-white py-2.5 hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ loading ? "登录中..." : "登录" }}
         </button>
       </form>
       <div class="text-sm text-center text-zinc-400">
-        还没有账号？<RouterLink to="/register" class="text-blue-400 hover:text-blue-300 font-medium"
+        还没有账号？<RouterLink to="/register" class="text-zinc-400 hover:text-zinc-200 font-medium"
           >立即注册</RouterLink
         >
       </div>

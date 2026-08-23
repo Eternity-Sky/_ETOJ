@@ -25,33 +25,22 @@ onMounted(async () => {
 <template>
   <div class="min-h-screen bg-zinc-900 text-zinc-100">
     <div class="max-w-6xl mx-auto px-4 py-8 space-y-12">
-      <section
-        class="relative overflow-hidden rounded-2xl border border-zinc-700 bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-800 p-8 sm:p-12"
-      >
-        <div class="relative max-w-2xl space-y-5">
-          <div
-            class="inline-flex items-center gap-2 rounded-full border border-blue-900 bg-zinc-800 px-3 py-1 text-xs font-medium text-blue-400"
-          >
-            <span
-              class="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse"
-            ></span>
+      <section class="border border-zinc-700 bg-zinc-800 p-8 sm:p-12">
+        <div class="max-w-2xl space-y-5">
+          <div class="inline-flex items-center gap-2 border border-zinc-600 bg-zinc-700 px-3 py-1 text-xs font-medium text-zinc-300">
             无服务器架构 · Cloudflare Workers + GitHub Actions
           </div>
           <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-100">
             写代码，提交，评测
-            <span class="block text-blue-400 mt-1">轻量纯粹的在线评测系统</span>
+            <span class="block text-zinc-400 mt-1">轻量纯粹的在线评测系统</span>
           </h1>
           <p class="text-zinc-400 leading-relaxed">
             ETOJ 是一个完全基于无服务器架构的在线评测系统。数据存储在 Cloudflare
             D1， 评测任务由 GitHub Actions 编译运行，全程无需维护服务器。
           </p>
           <div class="flex flex-wrap gap-3">
-            <RouterLink to="/problems" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded transition-colors"
-              >开始刷题 →</RouterLink
-            >
-            <RouterLink to="/rankings" class="border border-zinc-600 hover:border-zinc-500 text-zinc-300 px-5 py-2.5 rounded transition-colors"
-              >查看排行榜</RouterLink
-            >
+            <RouterLink to="/problems" class="bg-zinc-700 text-white px-5 py-2.5 hover:bg-zinc-600">开始刷题 →</RouterLink>
+            <RouterLink to="/rankings" class="border border-zinc-600 text-zinc-300 px-5 py-2.5 hover:bg-zinc-700 hover:text-zinc-100">查看排行榜</RouterLink>
           </div>
           <div class="grid grid-cols-3 gap-4 pt-4 max-w-md">
             <div>
@@ -79,24 +68,22 @@ onMounted(async () => {
       <section>
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-xl font-semibold">最新题目</h2>
-          <RouterLink to="/problems" class="text-blue-400 hover:text-blue-300 text-sm">查看全部 →</RouterLink>
+          <RouterLink to="/problems" class="text-zinc-400 hover:text-zinc-200 text-sm">查看全部 →</RouterLink>
         </div>
         <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <RouterLink
             v-for="p in problems"
             :key="p.id"
             :to="`/problem/${p.id}`"
-            class="bg-zinc-800 border border-zinc-700 rounded-lg p-5 hover:border-blue-600 hover:shadow-lg transition-all group"
+            class="bg-zinc-800 border border-zinc-700 p-5 hover:border-zinc-600"
           >
             <div class="flex items-start justify-between gap-3 mb-3">
-              <div
-                class="font-semibold text-zinc-100 group-hover:text-blue-400 transition-colors"
-              >
+              <div class="font-semibold text-zinc-100">
                 #{{ p.id }} · {{ p.title }}
               </div>
-              <span :class="['px-2 py-1 rounded text-xs', 
-                p.difficulty === 'easy' ? 'bg-emerald-900/50 text-emerald-400' : 
-                p.difficulty === 'medium' ? 'bg-amber-900/50 text-amber-400' : 'bg-rose-900/50 text-rose-400'
+              <span :class="['px-2 py-1 text-xs', 
+                p.difficulty === 'easy' ? 'bg-zinc-700 text-zinc-300' : 
+                p.difficulty === 'medium' ? 'bg-zinc-700 text-zinc-300' : 'bg-zinc-700 text-zinc-300'
               ]">{{
                 DIFFICULTY_LABEL[p.difficulty]
               }}</span>
@@ -104,13 +91,11 @@ onMounted(async () => {
             <div class="text-sm text-zinc-400 line-clamp-2 mb-4">
               {{ p.description }}
             </div>
-            <div
-              class="flex items-center justify-between text-xs text-zinc-500 pt-3 border-t border-zinc-700"
-            >
+            <div class="flex items-center justify-between text-xs text-zinc-500 pt-3 border-t border-zinc-700">
               <span>提交 {{ p.submission_count }}</span>
               <span>
                 通过
-                <span class="text-emerald-400 font-medium">
+                <span class="text-zinc-300 font-medium">
                   {{
                     p.submission_count
                       ? Math.round((p.accepted_count * 100) / p.submission_count)
@@ -122,22 +107,18 @@ onMounted(async () => {
           </RouterLink>
           <div
             v-if="!problems.length"
-            class="bg-zinc-800 border border-zinc-700 rounded-lg p-8 text-center text-zinc-400 col-span-full"
+            class="bg-zinc-800 border border-zinc-700 p-8 text-center text-zinc-400 col-span-full"
           >
             暂无题目，运行
-            <code class="text-xs bg-zinc-700 px-1.5 py-0.5 rounded"
-              >npm run seed</code
-            >
+            <code class="text-xs bg-zinc-700 px-1.5 py-0.5">npm run seed</code>
             添加示例题目
           </div>
         </div>
       </section>
 
       <section class="grid sm:grid-cols-3 gap-4">
-        <div class="bg-zinc-800 border border-zinc-700 rounded-lg p-5">
-          <div
-            class="h-10 w-10 rounded-lg bg-blue-900/50 text-blue-400 flex items-center justify-center mb-3"
-          >
+        <div class="bg-zinc-800 border border-zinc-700 p-5">
+          <div class="h-10 w-10 bg-zinc-700 text-zinc-400 flex items-center justify-center mb-3">
             <svg
               class="h-5 w-5"
               fill="none"
@@ -157,10 +138,8 @@ onMounted(async () => {
             API 服务部署在 Cloudflare 边缘节点，全球低延迟访问，按请求付费。
           </p>
         </div>
-        <div class="bg-zinc-800 border border-zinc-700 rounded-lg p-5">
-          <div
-            class="h-10 w-10 rounded-lg bg-emerald-900/50 text-emerald-400 flex items-center justify-center mb-3"
-          >
+        <div class="bg-zinc-800 border border-zinc-700 p-5">
+          <div class="h-10 w-10 bg-zinc-700 text-zinc-400 flex items-center justify-center mb-3">
             <svg
               class="h-5 w-5"
               fill="none"
@@ -181,10 +160,8 @@ onMounted(async () => {
             触发工作流，隔离容器中编译运行测试用例。
           </p>
         </div>
-        <div class="bg-zinc-800 border border-zinc-700 rounded-lg p-5">
-          <div
-            class="h-10 w-10 rounded-lg bg-amber-900/50 text-amber-400 flex items-center justify-center mb-3"
-          >
+        <div class="bg-zinc-800 border border-zinc-700 p-5">
+          <div class="h-10 w-10 bg-zinc-700 text-zinc-400 flex items-center justify-center mb-3">
             <svg
               class="h-5 w-5"
               fill="none"

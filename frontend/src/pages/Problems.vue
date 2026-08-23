@@ -54,7 +54,7 @@ onMounted(load);
         <h1 class="text-2xl font-bold">题目列表</h1>
         
         <div v-if="loading" class="flex items-center gap-2 text-sm text-zinc-400">
-          <div class="w-4 h-4 border-2 border-zinc-700 border-t-blue-500 rounded-full animate-spin"></div>
+          <div class="w-4 h-4 border-2 border-zinc-700 border-t-zinc-400 animate-spin"></div>
           <span>加载中...</span>
         </div>
         <div class="flex flex-wrap items-center gap-2">
@@ -62,7 +62,7 @@ onMounted(load);
             v-model="keyword"
             @input="load"
             placeholder="搜索题目..."
-            class="bg-zinc-800 text-zinc-100 sm:w-56 px-3 py-2 rounded border border-zinc-700 focus:outline-none focus:border-blue-500"
+            class="bg-zinc-800 text-zinc-100 sm:w-56 px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
           />
           <select
             v-model="difficulty"
@@ -70,7 +70,7 @@ onMounted(load);
               page = 1;
               load();
             "
-            class="bg-zinc-800 text-zinc-100 sm:w-32 px-3 py-2 rounded border border-zinc-700 focus:outline-none focus:border-blue-500"
+            class="bg-zinc-800 text-zinc-100 sm:w-32 px-3 py-2 border border-zinc-700 focus:outline-none focus:border-zinc-500"
           >
             <option value="">全部难度</option>
             <option value="easy">简单</option>
@@ -80,7 +80,7 @@ onMounted(load);
         </div>
       </div>
 
-      <div class="bg-zinc-800 rounded-lg overflow-hidden">
+      <div class="bg-zinc-800 border border-zinc-700">
         <table class="w-full text-sm">
           <thead class="bg-zinc-750 border-b border-zinc-700 text-zinc-400">
             <tr>
@@ -109,15 +109,12 @@ onMounted(load);
                 {{ p.id }}
               </td>
               <td class="px-4 py-3">
-                <RouterLink :to="`/problem/${p.id}`" class="text-blue-400 hover:text-blue-300 font-medium">{{
+                <RouterLink :to="`/problem/${p.id}`" class="text-zinc-400 hover:text-zinc-200 font-medium">{{
                   p.title
                 }}</RouterLink>
               </td>
               <td class="px-4 py-3">
-                <span :class="['px-2 py-1 rounded text-xs', 
-                  p.difficulty === 'easy' ? 'bg-emerald-900/50 text-emerald-400' : 
-                  p.difficulty === 'medium' ? 'bg-amber-900/50 text-amber-400' : 'bg-rose-900/50 text-rose-400'
-                ]">{{
+                <span :class="['px-2 py-1 text-xs bg-zinc-700 text-zinc-300']">{{
                   DIFFICULTY_LABEL[p.difficulty]
                 }}</span>
               </td>
@@ -125,7 +122,7 @@ onMounted(load);
                 {{ p.submission_count }}
               </td>
               <td class="px-4 py-3 text-right hidden sm:table-cell">
-                <span class="font-medium text-emerald-400">
+                <span class="font-medium text-zinc-300">
                   {{
                     p.submission_count
                       ? Math.min(Math.round((p.accepted_count * 100) / p.submission_count), 100)
@@ -153,7 +150,7 @@ onMounted(load);
                 page--;
                 load();
               "
-              class="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-1.5 rounded transition-colors"
+              class="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-1.5"
             >
               上一页
             </button>
@@ -164,7 +161,7 @@ onMounted(load);
                 page++;
                 load();
               "
-              class="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-1.5 rounded transition-colors"
+              class="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-1.5"
             >
               下一页
             </button>
