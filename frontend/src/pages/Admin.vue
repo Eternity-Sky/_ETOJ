@@ -6,8 +6,10 @@ import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
 const currentUser = ref<any>(null)
+const isSuperAdmin = ref(false) // 是否是超级管理员（用户名为admin）
 const stats = ref({ submissions: 0, users: 0, problems: 0 })
 const loading = ref(false)
+const loadingProblems = ref(false)
 const message = ref('')
 const activeTab = ref<'stats' | 'problems' | 'edit'>('stats')
 const problems = ref<any[]>([])
@@ -27,10 +29,19 @@ const problemForm = ref({
 const markdownContent = ref('')
 const testCases = ref<{input: string, output: string, input_file?: File, output_file?: File}[]>([{input: '', output: ''}])
 
+const users = ref<any[]>([])
+const loadingUsers = ref(false)
+
 async function loadMe() {
   try {
     const me = await api.get('/api/auth/me')
     currentUser.value = me
+    isSuperAdmin.value = me.username === 'admin' // 只有用户名为admin的人是超级管理员
+    // 如果用户是管理员，自动加载数据
+    if (me.role === 'admin') {
+      loadStats()
+      loadProblems()
+    }
   } catch {
     currentUser.value = null
   }
@@ -48,9 +59,42 @@ async function loadStats() {
   }
 }
 
+async function loadUsers() {
+  try {
+    loadingUsers.value = true
+    const data = await api.get('/api/admin/users')
+    users.value = data.users || []
+  } catch (e: any) {
+    message.value = e.message || '加载用户失败'
+  } finally {
+    loadingUsers.value = false
+  }
+}
+
+async function updateUserRole(userId: number, role: string) {
+  try {
+    await api.put(`/api/admin/users/${userId}`, { role })
+    message.value = '用户权限更新成功'
+    await loadUsers()
+  } catch (e: any) {
+    message.value = e.message || '更新失败'
+  }
+}
+
+async function deleteUser(userId: number) {
+  if (!confirm('确定要删除此用户吗？')) return
+  try {
+    await api.delete(`/api/admin/users/${userId}`)
+    message.value = '用户删除成功'
+    await loadUsers()
+  } catch (e: any) {
+    message.value = e.message || '删除失败'
+  }
+}
+
 async function loadProblems() {
   try {
-    loading.value = true
+    loadingProblems.value = true
     const data = await api.get('/api/problems')
     console.log('题目列表API响应:', data)
     problems.value = data.items || []
@@ -58,7 +102,7 @@ async function loadProblems() {
   } catch (e: any) {
     message.value = e.message || '加载题目失败'
   } finally {
-    loading.value = false
+    loadingProblems.value = false
   }
 }
 
@@ -276,11 +320,6 @@ watch(testCases, () => {
 
 onMounted(() => {
   loadMe()
-  if (currentUser.value?.username !== 'admin') {
-    message.value = '需要管理员权限'
-    return
-  }
-  loadStats()
 })
 </script>
 
@@ -288,7 +327,7 @@ onMounted(() => {
   <div class="max-w-6xl mx-auto p-6">
     <h1 class="text-2xl font-bold mb-6 text-zinc-100">后台管理</h1>
     
-    <div v-if="!currentUser || currentUser.username !== 'admin'" class="bg-red-900/30 border border-red-800 text-red-400 p-4 rounded-lg">
+    <div v-if="!currentUser || currentUser.role !== 'admin'" class="bg-red-900/30 border border-red-800 text-red-400 p-4 rounded-lg">
       需要管理员权限才能访问此页面
     </div>
     
@@ -306,6 +345,12 @@ onMounted(() => {
           :class="['px-4 py-2 text-sm font-medium border-b-2 -mb-px', activeTab === 'problems' ? 'border-blue-500 text-blue-400' : 'border-transparent text-zinc-400 hover:text-zinc-100']"
         >
           题目管理
+        </button>
+        <button 
+          @click="activeTab = 'users'; loadUsers()"
+          :class="['px-4 py-2 text-sm font-medium border-b-2 -mb-px', activeTab === 'users' ? 'border-blue-500 text-blue-400' : 'border-transparent text-zinc-400 hover:text-zinc-100']"
+        >
+          用户管理
         </button>
         <button 
           v-if="activeTab === 'edit'"
@@ -352,7 +397,11 @@ onMounted(() => {
           </div>
         </div>
         
-        <div class="bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden">
+        <div v-if="loadingProblems" class="flex items-center justify-center py-8">
+          <div class="w-8 h-8 border-4 border-zinc-700 border-t-blue-500 rounded-full animate-spin"></div>
+        </div>
+        
+        <div v-else class="bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden">
           <table class="w-full text-sm">
             <thead class="bg-zinc-750 border-b border-zinc-700 text-zinc-400">
               <tr>
@@ -508,6 +557,55 @@ onMounted(() => {
             <button @click="saveProblem" :disabled="loading" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm transition-colors disabled:opacity-50">保存</button>
             <button @click="activeTab = 'problems'" class="border border-zinc-600 hover:border-zinc-500 text-zinc-300 px-4 py-2 rounded-md text-sm transition-colors">取消</button>
           </div>
+        </div>
+      </div>
+      
+      <!-- 用户管理 -->
+      <div v-if="activeTab === 'users'" class="space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="text-lg font-semibold text-zinc-100">用户列表</h2>
+          <button @click="loadUsers" :disabled="loadingUsers" class="border border-zinc-600 hover:border-zinc-500 text-zinc-300 px-4 py-2 rounded-md text-sm transition-colors">刷新</button>
+        </div>
+        
+        <div class="bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden">
+          <table class="w-full text-sm">
+            <thead class="bg-zinc-750 border-b border-zinc-700 text-zinc-400">
+              <tr>
+                <th class="text-left px-4 py-3 font-medium">ID</th>
+                <th class="text-left px-4 py-3 font-medium">用户名</th>
+                <th class="text-left px-4 py-3 font-medium">邮箱</th>
+                <th class="text-left px-4 py-3 font-medium">角色</th>
+                <th class="text-right px-4 py-3 font-medium">操作</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-zinc-700">
+              <tr v-for="user in users" :key="user.id" class="hover:bg-zinc-750">
+                <td class="px-4 py-3 text-zinc-300">{{ user.id }}</td>
+                <td class="px-4 py-3 text-zinc-100">{{ user.username }}</td>
+                <td class="px-4 py-3 text-zinc-300">{{ user.email }}</td>
+                <td class="px-4 py-3">
+                  <select 
+                    v-model="user.role" 
+                    @change="updateUserRole(user.id, user.role)"
+                    class="bg-zinc-900 text-zinc-100 border border-zinc-600 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500"
+                    :disabled="!isSuperAdmin && user.username !== 'admin'"
+                  >
+                    <option value="user">普通用户</option>
+                    <option value="admin">管理员</option>
+                  </select>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <button 
+                    @click="deleteUser(user.id)"
+                    :disabled="user.username === 'admin'"
+                    class="text-red-400 hover:text-red-300 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    删除
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
       

@@ -111,6 +111,12 @@ const adminMiddleware = async (c: any, next: any) => {
   await next();
 };
 
+const superAdminMiddleware = async (c: any, next: any) => {
+  if (c.get("role") !== "admin" || c.get("username") !== "admin")
+    return c.json({ error: "Super admin required" }, 403);
+  await next();
+};
+
 app.get("/", (c) =>
   c.json({ name: "ETOJ API", version: "0.1.0", ts: Date.now() }),
 );
@@ -163,11 +169,29 @@ app.post("/api/captcha/validate", (c) => {
 
 app.post("/api/auth/register", async (c) => {
   try {
-    const { username, email, password } = await c.req.json();
+    const { username, email, password, captchaId, captchaCode } = await c.req.json();
     if (!username || !email || !password)
       return c.json({ error: "Missing fields" }, 400);
     if (password.length < 6)
       return c.json({ error: "Password too short" }, 400);
+    
+    // 验证验证码
+    if (!captchaId || !captchaCode) {
+      return c.json({ error: "请完成验证码" }, 400);
+    }
+    const stored = captchaStore.get(captchaId);
+    if (!stored) {
+      return c.json({ error: "验证码无效" }, 400);
+    }
+    if (Date.now() - stored.timestamp > CAPTCHA_TTL) {
+      captchaStore.delete(captchaId);
+      return c.json({ error: "验证码已过期" }, 400);
+    }
+    if (captchaCode.toLowerCase() !== stored.code.toLowerCase()) {
+      return c.json({ error: "验证码错误" }, 400);
+    }
+    captchaStore.delete(captchaId);
+    
     const hash = await hashPassword(password);
     const result = await c.env.DB.prepare(
       "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
@@ -810,6 +834,73 @@ app.post("/api/admin/renumber-problems", authMiddleware, adminMiddleware, async 
     return c.json({ message: "题目重新编号成功" });
   } catch (e: any) {
     console.error("重新编号失败:", e);
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// 用户管理端点
+app.get("/api/admin/users", authMiddleware, adminMiddleware, async (c) => {
+  try {
+    const users: any[] = await c.env.DB.prepare(
+      "SELECT id, username, email, role, created_at FROM users ORDER BY id DESC"
+    ).all();
+    return c.json({ users: users.results || [] });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+app.put("/api/admin/users/:id", authMiddleware, adminMiddleware, async (c) => {
+  try {
+    const id = Number(c.req.param("id"));
+    const { role } = await c.req.json();
+    
+    if (!role || (role !== 'user' && role !== 'admin')) {
+      return c.json({ error: "Invalid role" }, 400);
+    }
+    
+    // 检查是否设置为admin，如果是，需要超级管理员权限
+    if (role === 'admin' && c.get("username") !== 'admin') {
+      return c.json({ error: "只有超级管理员可以设置其他人为管理员" }, 403);
+    }
+    
+    const result = await c.env.DB.prepare(
+      "UPDATE users SET role = ? WHERE id = ?"
+    ).bind(role, id).run();
+    
+    if (!result.success) {
+      return c.json({ error: "Failed to update user" }, 400);
+    }
+    
+    return c.json({ message: "用户权限更新成功" });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+app.delete("/api/admin/users/:id", authMiddleware, adminMiddleware, async (c) => {
+  try {
+    const id = Number(c.req.param("id"));
+    
+    // 检查是否是admin用户
+    const user: any = await c.env.DB.prepare("SELECT username, role FROM users WHERE id = ?").bind(id).first();
+    if (user && user.username === 'admin') {
+      return c.json({ error: "无法删除超级管理员账号" }, 400);
+    }
+    
+    // 如果是admin用户，需要超级管理员权限才能删除
+    if (user && user.role === 'admin' && c.get("username") !== 'admin') {
+      return c.json({ error: "只有超级管理员可以删除其他管理员" }, 403);
+    }
+    
+    const result = await c.env.DB.prepare("DELETE FROM users WHERE id = ?").bind(id).run();
+    
+    if (!result.success) {
+      return c.json({ error: "Failed to delete user" }, 400);
+    }
+    
+    return c.json({ message: "用户删除成功" });
+  } catch (e: any) {
     return c.json({ error: e.message }, 500);
   }
 });
