@@ -143,16 +143,16 @@ export const STATUS_COLOR: Record<SubmissionStatus, string> = {
 };
 
 export const TEST_CASE_STATUS: Record<string, { label: string; color: string }> = {
-  AC: { label: "AC", color: "bg-emerald-700 text-emerald-200" },
-  WA: { label: "WA", color: "bg-rose-700 text-rose-200" },
-  TLE: { label: "TLE", color: "bg-blue-700 text-blue-200" },
-  MLE: { label: "MLE", color: "bg-blue-800 text-blue-200" },
-  OLE: { label: "OLE", color: "bg-blue-900 text-blue-200" },
-  RE: { label: "RE", color: "bg-purple-700 text-purple-200" },
-  CE: { label: "CE", color: "bg-yellow-700 text-yellow-200" },
-  PC: { label: "PC", color: "bg-orange-700 text-orange-200" },
-  UKE: { label: "UKE", color: "bg-zinc-700 text-zinc-200" },
-  SE: { label: "SE", color: "bg-gray-800 text-zinc-200" },
+  AC: { label: "AC", color: "bg-emerald-900 text-emerald-300" },
+  WA: { label: "WA", color: "bg-rose-900 text-rose-300" },
+  TLE: { label: "TLE", color: "bg-blue-900 text-blue-300" },
+  MLE: { label: "MLE", color: "bg-blue-950 text-blue-300" },
+  OLE: { label: "OLE", color: "bg-indigo-900 text-indigo-300" },
+  RE: { label: "RE", color: "bg-purple-900 text-purple-300" },
+  CE: { label: "CE", color: "bg-yellow-900 text-yellow-300" },
+  PC: { label: "PC", color: "bg-orange-900 text-orange-300" },
+  UKE: { label: "UKE", color: "bg-zinc-800 text-zinc-300" },
+  SE: { label: "SE", color: "bg-gray-900 text-zinc-300" },
 };
 
 export const DIFFICULTY_LABEL: Record<string, string> = {
