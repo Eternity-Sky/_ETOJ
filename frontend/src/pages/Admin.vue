@@ -207,6 +207,10 @@ function parseMarkdown(): void {
       const match = title.match(/样例输入\s*(\d+)/)
       const index = match ? parseInt(match[1]) - 1 : 0
       if (index >= 0) {
+        // 确保数组足够大
+        while (problemForm.value.sample_inputs.length <= index) {
+          problemForm.value.sample_inputs.push('')
+        }
         problemForm.value.sample_inputs[index] = input
       }
     } else if (title.startsWith('样例输出')) {
@@ -215,6 +219,10 @@ function parseMarkdown(): void {
       const match = title.match(/样例输出\s*(\d+)/)
       const index = match ? parseInt(match[1]) - 1 : 0
       if (index >= 0) {
+        // 确保数组足够大
+        while (problemForm.value.sample_outputs.length <= index) {
+          problemForm.value.sample_outputs.push('')
+        }
         problemForm.value.sample_outputs[index] = output
       }
     }
@@ -247,17 +255,28 @@ async function saveProblem() {
   try {
     loading.value = true
     
-    // 从markdown解析到表单
+    // 从markdown解析到表单（确保markdown中的数据同步到表单）
     parseMarkdown()
     
     // 更新测试点JSON
     updateTestCasesJson()
     
+    // 构建保存数据，优先使用表单数据
+    const saveData = {
+      ...problemForm.value,
+      description: problemForm.value.description || '',
+      input_format: problemForm.value.input_format || '',
+      output_format: problemForm.value.output_format || '',
+      sample_inputs: problemForm.value.sample_inputs,
+      sample_outputs: problemForm.value.sample_outputs,
+      test_cases_json: problemForm.value.test_cases_json
+    }
+    
     if (editingProblem.value) {
-      await api.put(`/api/problems/${editingProblem.value.id}`, problemForm.value)
+      await api.put(`/api/problems/${editingProblem.value.id}`, saveData)
       message.value = '题目更新成功'
     } else {
-      await api.post('/api/problems', problemForm.value)
+      await api.post('/api/problems', saveData)
       message.value = '题目创建成功'
     }
     
@@ -368,11 +387,12 @@ watch(testCases, () => {
 }, { deep: true })
 
 // 监听表单变化，自动更新markdown（避免循环）
-watch(() => [problemForm.value.description, problemForm.value.input_format, problemForm.value.output_format, problemForm.value.sample_inputs, problemForm.value.sample_outputs], () => {
-  if (!editingProblem.value) { // 只在新建时自动更新
-    markdownContent.value = generateMarkdown()
-  }
-}, { deep: true })
+// 暂时禁用自动更新，让用户手动编辑markdown
+// watch(() => [problemForm.value.description, problemForm.value.input_format, problemForm.value.output_format, problemForm.value.sample_inputs, problemForm.value.sample_outputs], () => {
+//   if (!editingProblem.value) { // 只在新建时自动更新
+//     markdownContent.value = generateMarkdown()
+//   }
+// }, { deep: true })
 
 onMounted(() => {
   loadMe()
