@@ -23,6 +23,17 @@ const healthLoading = ref(false);
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize));
 
+const averageRunTime = computed(() => {
+  const completedSubmissions = items.value.filter(s => 
+    s.status !== 'pending' && s.status !== 'judging' && s.run_time_ms !== null && s.run_time_ms !== undefined
+  );
+  
+  if (completedSubmissions.length === 0) return null;
+  
+  const totalTime = completedSubmissions.reduce((sum, s) => sum + (s.run_time_ms || 0), 0);
+  return Math.round(totalTime / completedSubmissions.length);
+});
+
 async function retest(submissionId: number) {
   try {
     const res = await api.post<any>('/api/submissions/retest', { submissionId })
@@ -93,6 +104,9 @@ onMounted(() => {
           <span class="font-medium">{{ judgeHealth.message }}</span>
         </div>
         <div class="text-sm text-zinc-500">
+          <span v-if="averageRunTime !== null" class="mr-4">
+            平均运行时间: {{ averageRunTime }}ms
+          </span>
           <span v-if="judgeHealth.latency !== null">
             延迟: {{ judgeHealth.latency }}ms
           </span>
@@ -231,7 +245,7 @@ onMounted(() => {
             </td>
           </tr>
           <tr v-if="!items.length">
-            <td colspan="8" class="px-4 py-10 text-center text-zinc-500">
+            <td colspan="11" class="px-4 py-10 text-center text-zinc-500">
               暂无提交记录
             </td>
           </tr>
