@@ -9,7 +9,14 @@ const { language, code, testCases = [], timeLimitMs = 1000, memoryLimitMb = 256,
 const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'etoj-'));
 
 const extMap = {
-  cpp: 'cpp'
+  c: 'c',
+  cpp: 'cpp',
+  cpp98: 'cpp',
+  cpp11: 'cpp',
+  cpp14: 'cpp',
+  cpp17: 'cpp',
+  cpp20: 'cpp',
+  cpp23: 'cpp'
 };
 const ext = extMap[language] || 'cpp';
 const srcName = `solution.${ext}`;
@@ -25,11 +32,29 @@ function norm(s) {
 
 async function compile() {
   try {
-    if (language === 'cpp') {
+    if (language === 'c') {
+      execFileSync('gcc', ['-O2', '-o', 'solution', 'solution.c'], { cwd: workdir, timeout: 15000, stdio: 'pipe' });
+      runCmd = [path.join(workdir, 'solution')];
+    } else if (language === 'cpp98') {
+      execFileSync('g++', ['-O2', '-std=c++98', '-o', 'solution', 'solution.cpp'], { cwd: workdir, timeout: 15000, stdio: 'pipe' });
+      runCmd = [path.join(workdir, 'solution')];
+    } else if (language === 'cpp11') {
+      execFileSync('g++', ['-O2', '-std=c++11', '-o', 'solution', 'solution.cpp'], { cwd: workdir, timeout: 15000, stdio: 'pipe' });
+      runCmd = [path.join(workdir, 'solution')];
+    } else if (language === 'cpp14') {
+      execFileSync('g++-9', ['-O2', '-std=c++14', '-o', 'solution', 'solution.cpp'], { cwd: workdir, timeout: 15000, stdio: 'pipe' });
+      runCmd = [path.join(workdir, 'solution')];
+    } else if (language === 'cpp17') {
       execFileSync('g++', ['-O2', '-std=c++17', '-o', 'solution', 'solution.cpp'], { cwd: workdir, timeout: 15000, stdio: 'pipe' });
       runCmd = [path.join(workdir, 'solution')];
+    } else if (language === 'cpp20') {
+      execFileSync('g++', ['-O2', '-std=c++20', '-o', 'solution', 'solution.cpp'], { cwd: workdir, timeout: 15000, stdio: 'pipe' });
+      runCmd = [path.join(workdir, 'solution')];
+    } else if (language === 'cpp23') {
+      execFileSync('g++', ['-O2', '-std=c++23', '-o', 'solution', 'solution.cpp'], { cwd: workdir, timeout: 15000, stdio: 'pipe' });
+      runCmd = [path.join(workdir, 'solution')];
     } else {
-      compileStatus = { status: 'compile_error', msg: `Unsupported language: ${language}. Only C++ is supported.` };
+      compileStatus = { status: 'compile_error', msg: `Unsupported language: ${language}. Only C and C++ versions are supported.` };
     }
   } catch (e) {
     // 捕获编译器返回的错误信息
