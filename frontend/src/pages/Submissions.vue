@@ -27,10 +27,13 @@ async function retest(submissionId: number) {
   try {
     const res = await api.post<any>('/api/submissions/retest', { submissionId })
     
-    success('重测成功')
-    load() // 刷新列表
+    success('Rejudge successful')
+    // 等待几秒后自动刷新
+    setTimeout(() => {
+      load() // 刷新列表
+    }, 3000)
   } catch (e: any) {
-    toastError('重测失败: ' + e.message)
+    toastError('Rejudge failed: ' + e.message)
   }
 }
 
@@ -44,7 +47,7 @@ async function load() {
     items.value = res.items || [];
     total.value = res.total || 0;
   } catch (e: any) {
-    alert('加载失败: ' + e.message)
+    alert('Load failed: ' + e.message)
   } finally {
     loading.value = false
   }
@@ -56,7 +59,7 @@ async function loadJudgeHealth() {
     const health = await api.get('/api/judge/health');
     judgeHealth.value = health;
   } catch (e: any) {
-    console.error('获取评测机状态失败:', e);
+    console.error('Failed to get judge status:', e);
   } finally {
     healthLoading.value = false;
   }

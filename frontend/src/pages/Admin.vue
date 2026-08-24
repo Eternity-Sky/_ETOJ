@@ -4,13 +4,15 @@ import { api } from '@/lib/api'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import { useToast } from '@/lib/toast'
+
+const { success, error: toastError } = useToast()
 
 const currentUser = ref<any>(null)
 const isSuperAdmin = ref(false) // 是否是超级管理员（用户名为admin）
 const stats = ref({ submissions: 0, users: 0, problems: 0 })
 const loading = ref(false)
 const loadingProblems = ref(false)
-const message = ref('')
 const activeTab = ref<'stats' | 'problems' | 'edit'>('stats')
 const problems = ref<any[]>([])
 const editingProblem = ref<any>(null)
@@ -53,7 +55,7 @@ async function loadStats() {
     const data = await api.get('/api/admin/stats')
     stats.value = data
   } catch (e: any) {
-    message.value = e.message || '加载统计失败'
+    toastError(e.message || 'Failed to load statistics')
   } finally {
     loading.value = false
   }
@@ -65,7 +67,7 @@ async function loadUsers() {
     const data = await api.get('/api/admin/users')
     users.value = data.users || []
   } catch (e: any) {
-    message.value = e.message || '加载用户失败'
+    toastError(e.message || 'Failed to load users')
   } finally {
     loadingUsers.value = false
   }
@@ -74,10 +76,10 @@ async function loadUsers() {
 async function updateUserRole(userId: number, role: string) {
   try {
     await api.put(`/api/admin/users/${userId}`, { role })
-    message.value = '用户权限更新成功'
+    success('User role updated successfully')
     await loadUsers()
   } catch (e: any) {
-    message.value = e.message || '更新失败'
+    toastError(e.message || 'Update failed')
   }
 }
 
@@ -85,10 +87,10 @@ async function deleteUser(userId: number) {
   if (!confirm('确定要删除此用户吗？')) return
   try {
     await api.del(`/api/admin/users/${userId}`)
-    message.value = '用户删除成功'
+    success('User deleted successfully')
     await loadUsers()
   } catch (e: any) {
-    message.value = e.message || '删除失败'
+    toastError(e.message || 'Delete failed')
   }
 }
 
@@ -100,7 +102,7 @@ async function loadProblems() {
     problems.value = data.items || []
     console.log('赋值后的题目数组:', problems.value)
   } catch (e: any) {
-    message.value = e.message || '加载题目失败'
+    toastError(e.message || 'Failed to load problems')
   } finally {
     loadingProblems.value = false
   }
@@ -112,10 +114,10 @@ async function clearSubmissions() {
   try {
     loading.value = true
     const result = await api.post('/api/admin/clear-submissions')
-    message.value = result.message || '清空成功'
+    success(result.message || 'Cleared successfully')
     await loadStats()
   } catch (e: any) {
-    message.value = e.message || '清空失败'
+    toastError(e.message || 'Clear failed')
   } finally {
     loading.value = false
   }
@@ -222,25 +224,25 @@ async function saveProblem() {
       ...problemForm.value,
       id: parseInt(problemForm.value.id), // 确保id是数字
       description: markdownContent.value || '',
-      input_format: '',
-      output_format: '',
-      sample_input: '',
-      sample_output: '',
+      input_format: problemForm.value.input_format || '',
+      output_format: problemForm.value.output_format || '',
+      sample_input: problemForm.value.sample_input || '',
+      sample_output: problemForm.value.sample_output || '',
       test_cases_json: problemForm.value.test_cases_json
     }
     
     if (editingProblem.value) {
       await api.put(`/api/problems/${editingProblem.value.id}`, saveData)
-      message.value = '题目更新成功'
+      success('Problem updated successfully')
     } else {
       await api.post('/api/problems', saveData)
-      message.value = '题目创建成功'
+      success('Problem created successfully')
     }
     
     await loadProblems()
     activeTab.value = 'problems'
   } catch (e: any) {
-    message.value = e.message || '保存失败'
+    toastError(e.message || 'Save failed')
   } finally {
     loading.value = false
   }
@@ -252,10 +254,13 @@ async function deleteProblem(id: number) {
   try {
     loading.value = true
     await api.del(`/api/problems/${id}`)
-    message.value = '题目删除成功'
+    success('Problem deleted successfully')
+    // 从本地数组中移除题目
+    problems.value = problems.value.filter(p => p.id !== id)
+    // 刷新以确保数据同步
     await loadProblems()
   } catch (e: any) {
-    message.value = e.message || '删除失败'
+    toastError(e.message || 'Delete failed')
   } finally {
     loading.value = false
   }
@@ -595,10 +600,6 @@ onMounted(() => {
             </tbody>
           </table>
         </div>
-      </div>
-      
-      <div v-if="message" class="mt-4 p-3 rounded-lg" :class="message.includes('成功') ? 'bg-emerald-900/30 text-emerald-400' : 'bg-red-900/30 text-red-400'">
-        {{ message }}
       </div>
     </div>
   </div>

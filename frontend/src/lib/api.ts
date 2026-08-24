@@ -38,7 +38,10 @@ async function request<T = any>(path: string, opts: Opt = {}): Promise<T> {
   }
   if (!res.ok) {
     const msg = data?.error || `HTTP ${res.status}`;
-    throw new Error(msg);
+    const error = new Error(msg) as any;
+    error.response = data; // 保留完整的响应数据
+    error.status = res.status;
+    throw error;
   }
   
   // 缓存GET请求结果
@@ -119,15 +122,15 @@ export type SubmissionStatus =
   | "system_error";
 
 export const STATUS_LABEL: Record<SubmissionStatus, string> = {
-  pending: "等待评测",
-  judging: "评测中",
-  accepted: "通过",
-  wrong_answer: "答案错误",
-  time_limit_exceeded: "超时",
-  memory_limit_exceeded: "内存超限",
-  runtime_error: "运行错误",
-  compile_error: "编译错误",
-  system_error: "系统错误",
+  pending: "Pending",
+  judging: "Judging",
+  accepted: "Accepted",
+  wrong_answer: "Wrong Answer",
+  time_limit_exceeded: "Time Limit Exceeded",
+  memory_limit_exceeded: "Memory Limit Exceeded",
+  runtime_error: "Runtime Error",
+  compile_error: "Compile Error",
+  system_error: "System Error",
 };
 
 export const STATUS_COLOR: Record<SubmissionStatus, string> = {
@@ -167,5 +170,11 @@ export const DIFFICULTY_COLOR: Record<string, string> = {
 };
 
 export const LANGUAGES = [
-  { value: "cpp", label: "C++", ext: "cpp" },
+  { value: "c", label: "C", ext: "c" },
+  { value: "cpp98", label: "C++98", ext: "cpp" },
+  { value: "cpp11", label: "C++11", ext: "cpp" },
+  { value: "cpp14", label: "C++14 (GCC9)", ext: "cpp" },
+  { value: "cpp17", label: "C++17", ext: "cpp" },
+  { value: "cpp20", label: "C++20", ext: "cpp" },
+  { value: "cpp23", label: "C++23", ext: "cpp" },
 ];

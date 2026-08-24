@@ -26,14 +26,20 @@ let editor: any = null
 let monaco: any = null
 
 const languageMap: Record<string, string> = {
+  c: 'c',
   cpp: 'cpp',
+  cpp98: 'cpp',
+  cpp11: 'cpp',
+  cpp14: 'cpp',
+  cpp17: 'cpp',
+  cpp20: 'cpp',
+  cpp23: 'cpp',
   java: 'java',
   python: 'python',
   javascript: 'javascript',
   typescript: 'typescript',
   go: 'go',
-  rust: 'rust',
-  c: 'c'
+  rust: 'rust'
 }
 
 async function initEditor() {
