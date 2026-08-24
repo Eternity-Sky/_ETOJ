@@ -21,7 +21,7 @@ async function getCaptcha() {
     captchaId.value = response.captchaId
     captchaCode.value = response.captchaCode
   } catch (e: any) {
-    console.error('获取验证码失败:', e)
+    console.error('Failed to get captcha:', e)
   }
 }
 

@@ -472,6 +472,25 @@ async function applyJudgeResult(db: D1Database, data: any) {
       `UPDATE users SET solved_count = solved_count + 1 WHERE id = ?`,
     ).bind(data.userId).run();
   }
+  
+  // Send notification to user
+  const statusText = data.status === 'accepted' ? 'Accepted' : 
+                     data.status === 'wrong_answer' ? 'Wrong Answer' :
+                     data.status === 'time_limit_exceeded' ? 'Time Limit Exceeded' :
+                     data.status === 'memory_limit_exceeded' ? 'Memory Limit Exceeded' :
+                     data.status === 'runtime_error' ? 'Runtime Error' :
+                     data.status === 'compile_error' ? 'Compile Error' : data.status;
+  
+  const type = data.status === 'accepted' ? 'success' : 
+               data.status === 'compile_error' ? 'error' : 'info';
+  
+  await createNotification(
+    db,
+    data.userId,
+    type,
+    `Judging Completed: ${statusText}`,
+    `Your submission #${data.submissionId} has been judged. Result: ${statusText}`
+  );
 }
 
 // GitHub Actions webhook接收端点（无需认证，由API_TOKEN验证）
@@ -720,7 +739,10 @@ app.post("/api/admin/renumber-problems", authMiddleware, adminMiddleware, async 
       idMap.set(oldId, newId);
     }
     
-    // 使用两步法：先更新为负ID，再更新为正ID，避免外键冲突
+    // 先临时删除提交记录，避免外键约束
+    await c.env.DB.prepare("DELETE FROM submissions").run();
+    
+    // 使用两步法更新题目ID
     // 第一步：将所有ID更新为负数
     for (const [oldId, newId] of idMap) {
       if (oldId !== newId) {
@@ -748,16 +770,13 @@ app.post("/api/admin/renumber-problems", authMiddleware, adminMiddleware, async 
       }
     }
     
-    // 更新提交记录中的problem_id
-    for (const [oldId, newId] of idMap) {
-      if (oldId !== newId) {
-        await c.env.DB.prepare("UPDATE submissions SET problem_id = ? WHERE problem_id = ?")
-          .bind(newId, oldId)
-          .run();
-      }
-    }
+    // 重置题目统计（因为删除了提交记录）
+    await c.env.DB.prepare("UPDATE problems SET submission_count = 0, accepted_count = 0").run();
     
-    return c.json({ message: `成功重新编号 ${problems.results.length} 个题目` });
+    // 重置用户统计
+    await c.env.DB.prepare("UPDATE users SET submissions_count = 0, solved_count = 0").run();
+    
+    return c.json({ message: `成功重新编号 ${problems.results.length} 个题目（提交记录已清空）` });
   } catch (e: any) {
     return c.json({ error: e.message }, 500);
   }
@@ -1005,6 +1024,94 @@ app.get("/api/rankings", async (c) => {
     `SELECT id, username, solved_count, submissions_count, created_at FROM users ORDER BY solved_count DESC, submissions_count ASC LIMIT 100`,
   ).all();
   return c.json(users.results);
+});
+
+// Notification helper function
+async function createNotification(
+  db: D1Database,
+  userId: number,
+  type: 'info' | 'success' | 'warning' | 'error',
+  title: string,
+  message: string
+) {
+  await db.prepare(
+    "INSERT INTO notifications (user_id, type, title, message, read) VALUES (?, ?, ?, ?, 0)"
+  ).bind(userId, type, title, message).run();
+}
+
+// Get user notifications
+app.get("/api/notifications", authMiddleware, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const notifications = await c.env.DB.prepare(
+      "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50"
+    ).bind(userId).all();
+    
+    const unreadCount = await c.env.DB.prepare(
+      "SELECT COUNT(*) as c FROM notifications WHERE user_id = ? AND read = 0"
+    ).bind(userId).first();
+    
+    return c.json({
+      notifications: notifications.results,
+      unreadCount: unreadCount?.c || 0
+    });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// Mark notification as read
+app.post("/api/notifications/:id/read", authMiddleware, async (c) => {
+  try {
+    const id = Number(c.req.param("id"));
+    const userId = c.get("userId");
+    
+    await c.env.DB.prepare(
+      "UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?"
+    ).bind(id, userId).run();
+    
+    return c.json({ message: "Marked as read" });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// Mark all notifications as read
+app.post("/api/notifications/read-all", authMiddleware, async (c) => {
+  try {
+    const userId = c.get("userId");
+    
+    await c.env.DB.prepare(
+      "UPDATE notifications SET read = 1 WHERE user_id = ?"
+    ).bind(userId).run();
+    
+    return c.json({ message: "All marked as read" });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// Admin send notification to user
+app.post("/api/admin/notifications", authMiddleware, adminMiddleware, async (c) => {
+  try {
+    const { userId, type, title, message } = await c.req.json();
+    
+    if (!userId || !title || !message) {
+      return c.json({ error: "Missing required fields" }, 400);
+    }
+    
+    await createNotification(
+      c.env.DB,
+      userId,
+      type || 'info',
+      title,
+      message
+    );
+    
+    return c.json({ message: "Notification sent" });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
 });
 
 app.onError((err, c) => {

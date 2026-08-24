@@ -20,11 +20,11 @@ async function retest() {
   try {
     const res = await api.post<any>('/api/submissions/retest', { submissionId: props.id })
     
-    success('重测成功')
+    success('Rejudge successful')
     // 重新加载当前提交记录
     load()
   } catch (e: any) {
-    toastError('重测失败: ' + e.message)
+    toastError('Rejudge failed: ' + e.message)
   }
 }
 
@@ -62,7 +62,7 @@ function getTestCaseInfo(c: any, i: number) {
 }
 
 function getCompileError() {
-  if (!sub.value?.result_json) return '无编译错误信息'
+  if (!sub.value?.result_json) return 'No compile error information'
   try {
     const result = JSON.parse(sub.value.result_json)
     if (result.error) {
@@ -84,7 +84,7 @@ function getCompileError() {
 }
 
 function getRuntimeError() {
-  if (!sub.value?.result_json) return '无运行错误信息'
+  if (!sub.value?.result_json) return 'No runtime error information'
   try {
     const result = JSON.parse(sub.value.result_json)
     if (result.details && result.details.compilerOutput) {
@@ -143,7 +143,7 @@ async function load() {
       forbidden.value = true
       error.value = '无权查看此提交记录'
     } else {
-      error.value = e.message || '加载失败'
+      error.value = e.message || 'Load failed'
     }
   } finally {
     loading.value = false
@@ -234,24 +234,24 @@ onMounted(() => {
     </div>
 
     <div v-if="sub.status === 'compile_error'" class="card overflow-hidden">
-      <div class="px-4 py-2.5 border-b border-zinc-700 bg-red-900/30 text-sm font-semibold text-red-400">编译错误</div>
+      <div class="px-4 py-2.5 border-b border-zinc-700 bg-red-900/30 text-sm font-semibold text-red-400">Compile Error</div>
       <div class="p-4">
         <pre class="!text-xs !p-4 !bg-red-950 !text-red-100 border border-red-900">{{ getCompileError() }}</pre>
       </div>
     </div>
 
     <div v-if="sub.status === 'runtime_error'" class="card overflow-hidden">
-      <div class="px-4 py-2.5 border-b border-zinc-700 bg-purple-900/30 text-sm font-semibold text-purple-400">运行错误</div>
+      <div class="px-4 py-2.5 border-b border-zinc-700 bg-purple-900/30 text-sm font-semibold text-purple-400">Runtime Error</div>
       <div class="p-4">
-        <pre v-if="getRuntimeError() !== '无运行错误信息'" class="!text-xs !p-4 !bg-purple-950 !text-purple-100 border border-purple-900">{{ getRuntimeError() }}</pre>
-        <div v-else class="text-zinc-400 text-sm">程序运行时发生错误，可能是内存访问违规、除零错误或异常退出。</div>
+        <pre v-if="getRuntimeError() !== 'No runtime error information'" class="!text-xs !p-4 !bg-purple-950 !text-purple-100 border border-purple-900">{{ getRuntimeError() }}</pre>
+        <div v-else class="text-zinc-400 text-sm">Runtime error occurred, possibly memory access violation, division by zero, or abnormal exit.</div>
       </div>
     </div>
 
     <div v-if="sub.status === 'time_limit_exceeded'" class="card overflow-hidden">
-      <div class="px-4 py-2.5 border-b border-zinc-700 bg-blue-900/30 text-sm font-semibold text-blue-400">超时错误</div>
+      <div class="px-4 py-2.5 border-b border-zinc-700 bg-blue-900/30 text-sm font-semibold text-blue-400">Time Limit Exceeded</div>
       <div class="p-4">
-        <pre v-if="getRuntimeError() !== '无运行错误信息'" class="!text-xs !p-4 !bg-blue-950 !text-blue-100 border border-blue-900">{{ getRuntimeError() }}</pre>
+        <pre v-if="getRuntimeError() !== 'No runtime error information'" class="!text-xs !p-4 !bg-blue-950 !text-blue-100 border border-blue-900">{{ getRuntimeError() }}</pre>
         <div v-else class="text-zinc-400 text-sm">程序运行时间超过限制，请优化算法或检查是否有死循环。</div>
       </div>
     </div>
@@ -259,7 +259,7 @@ onMounted(() => {
     <div v-if="sub.status === 'memory_limit_exceeded'" class="card overflow-hidden">
       <div class="px-4 py-2.5 border-b border-zinc-700 bg-orange-900/30 text-sm font-semibold text-orange-400">内存超限</div>
       <div class="p-4">
-        <pre v-if="getRuntimeError() !== '无运行错误信息'" class="!text-xs !p-4 !bg-orange-950 !text-orange-100 border border-orange-900">{{ getRuntimeError() }}</pre>
+        <pre v-if="getRuntimeError() !== 'No runtime error information'" class="!text-xs !p-4 !bg-orange-950 !text-orange-100 border border-orange-900">{{ getRuntimeError() }}</pre>
         <div v-else class="text-zinc-400 text-sm">程序内存使用超过限制，请优化内存使用或检查是否有内存泄漏。</div>
       </div>
     </div>
@@ -332,11 +332,11 @@ onMounted(() => {
       <div class="px-4 py-2.5 border-b border-zinc-700 bg-zinc-800 text-sm font-semibold">测试点信息</div>
       <div class="p-4">
         <div class="text-zinc-400 text-sm">
-          {{ sub.status === 'compile_error' ? '编译错误，无测试点信息' : 
-             sub.status === 'runtime_error' ? '运行错误，无测试点信息' :
-             sub.status === 'time_limit_exceeded' ? '超时，无测试点信息' :
-             sub.status === 'memory_limit_exceeded' ? '内存超限，无测试点信息' :
-             '无测试点信息' }}
+          {{ sub.status === 'compile_error' ? 'Compile Error, no test case information' : 
+             sub.status === 'runtime_error' ? 'Runtime Error, no test case information' :
+             sub.status === 'time_limit_exceeded' ? 'Time Limit Exceeded, no test case information' :
+             sub.status === 'memory_limit_exceeded' ? 'Memory Limit Exceeded, no test case information' :
+             'No test case information' }}
         </div>
       </div>
     </div>

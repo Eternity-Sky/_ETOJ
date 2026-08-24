@@ -43,7 +43,7 @@ async function load() {
     if (!code.value) code.value = templates[language.value] || ''
     await getCaptcha()
   } catch (e: any) {
-    toastError('加载失败: ' + e.message)
+    toastError('Load failed: ' + e.message)
   } finally {
     loading.value = false
   }
@@ -55,7 +55,7 @@ async function getCaptcha() {
     captchaId.value = response.captchaId
     captchaCode.value = response.captchaCode
   } catch (e: any) {
-    console.error('获取验证码失败:', e)
+    console.error('Failed to get captcha:', e)
   }
 }
 
@@ -74,7 +74,7 @@ async function submit() {
       captchaCode: captchaInput.value
     })
     
-    success('提交成功')
+    success('Submitted successfully')
     location.href = `/submission/${res.id}`
     
   } catch (e: any) {

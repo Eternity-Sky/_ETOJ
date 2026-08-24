@@ -3,6 +3,7 @@ import { RouterLink, RouterView } from 'vue-router'
 import { ref, onMounted } from 'vue'
 import { api, type User } from './lib/api'
 import ToastContainer from './components/ToastContainer.vue'
+import Notifications from './components/Notifications.vue'
 
 const user = ref<User | null>(null)
 
@@ -42,6 +43,7 @@ onMounted(() => {
         </nav>
         <div class="flex items-center gap-2">
           <template v-if="user">
+            <Notifications />
             <RouterLink to="/me" class="text-zinc-300 hover:text-zinc-100 hidden sm:flex items-center gap-2">
               <span class="h-6 w-6 inline-flex items-center justify-center bg-zinc-700 text-zinc-300 text-xs font-bold">{{ user.username[0].toUpperCase() }}</span>
               <span>{{ user.username }}</span>

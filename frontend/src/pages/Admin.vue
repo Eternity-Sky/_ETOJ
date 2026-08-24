@@ -33,6 +33,13 @@ const testCases = ref<{input: string, output: string, input_file?: File, output_
 
 const users = ref<any[]>([])
 const loadingUsers = ref(false)
+const selectedUser = ref<any>(null)
+const notificationForm = ref({
+  type: 'info',
+  title: '',
+  message: ''
+})
+const showNotificationDialog = ref(false)
 
 async function loadMe() {
   try {
@@ -91,6 +98,37 @@ async function deleteUser(userId: number) {
     await loadUsers()
   } catch (e: any) {
     toastError(e.message || 'Delete failed')
+  }
+}
+
+function openNotificationDialog(user: any) {
+  selectedUser.value = user
+  notificationForm.value = {
+    type: 'info',
+    title: '',
+    message: ''
+  }
+  showNotificationDialog.value = true
+}
+
+async function sendNotification() {
+  if (!selectedUser.value || !notificationForm.value.title || !notificationForm.value.message) {
+    toastError('Please fill in all required fields')
+    return
+  }
+  
+  try {
+    await api.sendNotification({
+      userId: selectedUser.value.id,
+      type: notificationForm.value.type,
+      title: notificationForm.value.title,
+      message: notificationForm.value.message
+    })
+    success('Notification sent successfully')
+    showNotificationDialog.value = false
+    selectedUser.value = null
+  } catch (e: any) {
+    toastError(e.message || 'Failed to send notification')
   }
 }
 
@@ -609,6 +647,12 @@ onMounted(() => {
                 </td>
                 <td class="px-4 py-3 text-right">
                   <button 
+                    @click="openNotificationDialog(user)"
+                    class="text-blue-400 hover:text-blue-300 text-xs mr-3"
+                  >
+                    Send Message
+                  </button>
+                  <button 
                     @click="deleteUser(user.id)"
                     :disabled="user.username === 'admin'"
                     class="text-red-400 hover:text-red-300 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
@@ -619,6 +663,36 @@ onMounted(() => {
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Notification Dialog -->
+    <div v-if="showNotificationDialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-zinc-800 rounded-lg p-6 w-full max-w-md border border-zinc-700">
+        <h3 class="text-lg font-semibold text-zinc-100 mb-4">Send Message to {{ selectedUser?.username }}</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm text-zinc-400 mb-1">Type</label>
+            <select v-model="notificationForm.type" class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+              <option value="info">Info</option>
+              <option value="success">Success</option>
+              <option value="warning">Warning</option>
+              <option value="error">Error</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm text-zinc-400 mb-1">Title</label>
+            <input v-model="notificationForm.title" type="text" class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500" placeholder="Notification title">
+          </div>
+          <div>
+            <label class="block text-sm text-zinc-400 mb-1">Message</label>
+            <textarea v-model="notificationForm.message" rows="4" class="w-full bg-zinc-900 text-zinc-100 border border-zinc-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500" placeholder="Notification message"></textarea>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+          <button @click="showNotificationDialog = false" class="border border-zinc-600 hover:border-zinc-500 text-zinc-300 px-4 py-2 rounded-md text-sm transition-colors">Cancel</button>
+          <button @click="sendNotification" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm transition-colors">Send</button>
         </div>
       </div>
     </div>

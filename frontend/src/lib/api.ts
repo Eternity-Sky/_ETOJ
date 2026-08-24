@@ -60,6 +60,13 @@ export const api = {
     request<T>(p, { method: "PUT", body }),
   del: <T = any>(p: string) => request<T>(p, { method: "DELETE" }),
   clearCache: () => cache.clear(),
+  
+  // Notification API
+  getNotifications: () => request<{ notifications: Notification[]; unreadCount: number }>('/api/notifications'),
+  markNotificationRead: (id: number) => request<{ message: string }>(`/api/notifications/${id}/read`, { method: 'POST' }),
+  markAllNotificationsRead: () => request<{ message: string }>('/api/notifications/read-all', { method: 'POST' }),
+  sendNotification: (data: { userId: number; type: string; title: string; message: string }) => 
+    request<{ message: string }>('/api/admin/notifications', { method: 'POST', body: data }),
 };
 
 export type User = {
@@ -120,6 +127,16 @@ export type SubmissionStatus =
   | "runtime_error"
   | "compile_error"
   | "system_error";
+
+export type Notification = {
+  id: number;
+  user_id: number;
+  type: 'info' | 'success' | 'warning' | 'error';
+  title: string;
+  message: string;
+  read: number;
+  created_at: string;
+};
 
 export const STATUS_LABEL: Record<SubmissionStatus, string> = {
   pending: "Pending",

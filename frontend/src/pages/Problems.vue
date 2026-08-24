@@ -38,7 +38,7 @@ async function load() {
     items.value = list;
     total.value = keyword.value ? list.length : res.total || 0;
   } catch (e: any) {
-    console.error('加载失败:', e);
+    console.error('Load failed:', e);
   } finally {
     loading.value = false;
   }
