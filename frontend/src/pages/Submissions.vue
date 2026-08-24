@@ -25,12 +25,12 @@ const totalPages = computed(() => Math.ceil(total.value / pageSize));
 
 const averageRunTime = computed(() => {
   const completedSubmissions = items.value.filter(s => 
-    s.status !== 'pending' && s.status !== 'judging' && s.run_time_ms !== null && s.run_time_ms !== undefined
+    s.status !== 'pending' && s.status !== 'judging' && s.judge_latency_ms !== null && s.judge_latency_ms !== undefined
   );
   
   if (completedSubmissions.length === 0) return null;
   
-  const totalTime = completedSubmissions.reduce((sum, s) => sum + (s.run_time_ms || 0), 0);
+  const totalTime = completedSubmissions.reduce((sum, s) => sum + (s.judge_latency_ms || 0), 0);
   return Math.round(totalTime / completedSubmissions.length);
 });
 
@@ -105,7 +105,7 @@ onMounted(() => {
         </div>
         <div class="text-sm text-zinc-500">
           <span v-if="averageRunTime !== null" class="mr-4">
-            平均运行时间: {{ averageRunTime }}ms
+            平均评测时间: {{ averageRunTime }}ms
           </span>
           <span v-if="judgeHealth.latency !== null">
             延迟: {{ judgeHealth.latency }}ms
