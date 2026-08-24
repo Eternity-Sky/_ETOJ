@@ -4,13 +4,17 @@ on:
   repository_dispatch:
     types: [judge-submission]
 
+concurrency:
+  group: judge-submission
+  cancel-in-progress: false
+
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   judge:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     outputs:
       result: ${{ steps.set_result.outputs.result }}
     steps:
@@ -18,7 +22,6 @@ jobs:
 
       - name: Record workflow start time
         run: |
-          # 记录workflow开始时间
           WORKFLOW_START_TIME=$(date +%s%3N)
           echo "WORKFLOW_START_TIME=$WORKFLOW_START_TIME" >> $GITHUB_ENV
 
@@ -27,7 +30,7 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install GCC (C/C++) and PHP
+      - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y gcc g++ g++-9 php time
 
       - name: Write submission data
