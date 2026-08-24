@@ -365,7 +365,7 @@ app.post("/api/problems", authMiddleware, adminMiddleware, async (c) => {
       body.output_format || "",
       body.sample_input || "",
       body.sample_output || "",
-      JSON.stringify(body.test_cases || []),
+      body.test_cases_json || "[]",
       body.time_limit_ms || 1000,
       body.memory_limit_mb || 256,
     )

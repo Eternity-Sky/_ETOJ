@@ -201,7 +201,6 @@ async function main() {
       expected: passed ? undefined : tc.output,
       actual: passed ? undefined : r.output.slice(0, 500),
     });
-    if (r.timedOut) break;
   }
 
   const details = { passed: allPass, details: results };
