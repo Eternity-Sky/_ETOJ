@@ -1149,6 +1149,180 @@ app.post("/api/admin/notifications", authMiddleware, adminMiddleware, async (c) 
   }
 });
 
+// Solutions API
+app.get("/api/problems/:problemId/solutions", async (c) => {
+  try {
+    const problemId = Number(c.req.param("problemId"));
+    const solutions = await c.env.DB.prepare(
+      `SELECT s.*, u.username FROM solutions s 
+       LEFT JOIN users u ON s.user_id = u.id 
+       WHERE s.problem_id = ? 
+       ORDER BY s.created_at DESC`
+    ).bind(problemId).all();
+    
+    return c.json({ solutions: solutions.results || [] });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+app.get("/api/solutions/:id", async (c) => {
+  try {
+    const id = Number(c.req.param("id"));
+    const solution = await c.env.DB.prepare(
+      `SELECT s.*, u.username FROM solutions s 
+       LEFT JOIN users u ON s.user_id = u.id 
+       WHERE s.id = ?`
+    ).bind(id).first();
+    
+    if (!solution) {
+      return c.json({ error: "Solution not found" }, 404);
+    }
+    
+    return c.json(solution);
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+app.post("/api/solutions", authMiddleware, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const { problemId, title, content, language } = await c.req.json();
+    
+    if (!problemId || !title || !content) {
+      return c.json({ error: "Missing required fields" }, 400);
+    }
+    
+    const result = await c.env.DB.prepare(
+      "INSERT INTO solutions (problem_id, user_id, title, content, language) VALUES (?, ?, ?, ?, ?)"
+    ).bind(problemId, userId, title, content, language || 'markdown').run();
+    
+    return c.json({ id: result.meta.last_row_id, message: "Solution created" });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+app.put("/api/solutions/:id", authMiddleware, async (c) => {
+  try {
+    const id = Number(c.req.param("id"));
+    const userId = c.get("userId");
+    const { title, content } = await c.req.json();
+    
+    // Check if user owns this solution
+    const solution: any = await c.env.DB.prepare(
+      "SELECT user_id FROM solutions WHERE id = ?"
+    ).bind(id).first();
+    
+    if (!solution) {
+      return c.json({ error: "Solution not found" }, 404);
+    }
+    
+    if (solution.user_id !== userId) {
+      return c.json({ error: "Unauthorized" }, 403);
+    }
+    
+    await c.env.DB.prepare(
+      "UPDATE solutions SET title = ?, content = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    ).bind(title, content, id).run();
+    
+    return c.json({ message: "Solution updated" });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+app.delete("/api/solutions/:id", authMiddleware, async (c) => {
+  try {
+    const id = Number(c.req.param("id"));
+    const userId = c.get("userId");
+    
+    // Check if user owns this solution
+    const solution: any = await c.env.DB.prepare(
+      "SELECT user_id FROM solutions WHERE id = ?"
+    ).bind(id).first();
+    
+    if (!solution) {
+      return c.json({ error: "Solution not found" }, 404);
+    }
+    
+    if (solution.user_id !== userId) {
+      return c.json({ error: "Unauthorized" }, 403);
+    }
+    
+    await c.env.DB.prepare("DELETE FROM solutions WHERE id = ?").bind(id).run();
+    
+    return c.json({ message: "Solution deleted" });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// Solution comments API
+app.get("/api/solutions/:solutionId/comments", async (c) => {
+  try {
+    const solutionId = Number(c.req.param("solutionId"));
+    const comments = await c.env.DB.prepare(
+      `SELECT c.*, u.username FROM solution_comments c 
+       LEFT JOIN users u ON c.user_id = u.id 
+       WHERE c.solution_id = ? 
+       ORDER BY c.created_at ASC`
+    ).bind(solutionId).all();
+    
+    return c.json({ comments: comments.results || [] });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+app.post("/api/solutions/:solutionId/comments", authMiddleware, async (c) => {
+  try {
+    const solutionId = Number(c.req.param("solutionId"));
+    const userId = c.get("userId");
+    const { content } = await c.req.json();
+    
+    if (!content) {
+      return c.json({ error: "Content is required" }, 400);
+    }
+    
+    const result = await c.env.DB.prepare(
+      "INSERT INTO solution_comments (solution_id, user_id, content) VALUES (?, ?, ?)"
+    ).bind(solutionId, userId, content).run();
+    
+    return c.json({ id: result.meta.last_row_id, message: "Comment added" });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+app.delete("/api/solutions/:solutionId/comments/:commentId", authMiddleware, async (c) => {
+  try {
+    const solutionId = Number(c.req.param("solutionId"));
+    const commentId = Number(c.req.param("commentId"));
+    const userId = c.get("userId");
+    
+    // Check if user owns this comment
+    const comment: any = await c.env.DB.prepare(
+      "SELECT user_id FROM solution_comments WHERE id = ?"
+    ).bind(commentId).first();
+    
+    if (!comment) {
+      return c.json({ error: "Comment not found" }, 404);
+    }
+    
+    if (comment.user_id !== userId) {
+      return c.json({ error: "Unauthorized" }, 403);
+    }
+    
+    await c.env.DB.prepare("DELETE FROM solution_comments WHERE id = ?").bind(commentId).run();
+    
+    return c.json({ message: "Comment deleted" });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
 app.onError((err, c) => {
   console.error("Unhandled:", err);
   return c.json({ error: err.message || "Internal" }, 500);

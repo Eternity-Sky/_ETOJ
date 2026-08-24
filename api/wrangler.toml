@@ -10,6 +10,4 @@ database_id = "7850c880-00c8-4a8c-aa95-c2d39a2a23dc"
 
 [vars]
 GITHUB_REPO = "Eternity-Sky/_ETOJ"
-JWT_SECRET = "mWIs4SGbAF3og2Qxikp8dBur6EOKt5TVh1JcaMNPDCvR9wljXUYzqnfeLZ7y0H"
-GITHUB_TOKEN = "ghp_your_token_here"
 CORS_ORIGIN = "*"

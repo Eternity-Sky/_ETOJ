@@ -6,6 +6,8 @@ import { useToast } from '@/lib/toast'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import CodeEditor from '@/components/CodeEditor.vue'
 import Captcha from '@/components/Captcha.vue'
+import SolutionEditor from '@/components/SolutionEditor.vue'
+import SolutionComments from '@/components/SolutionComments.vue'
 
 const { success, error: toastError, info } = useToast()
 
@@ -16,10 +18,16 @@ const loading = ref(false)
 const code = ref('')
 const submitting = ref(false)
 const language = ref('cpp')
-const activeTab = ref('description') // 'description' or 'submit'
+const activeTab = ref('description') // 'description', 'submit', 'solutions'
 const captchaInput = ref('')
 const captchaId = ref('')
 const captchaCode = ref('')
+
+const solutions = ref<any[]>([])
+const loadingSolutions = ref(false)
+const showSolutionEditor = ref(false)
+const editingSolution = ref<any>(null)
+const currentUserId = ref<number | null>(null)
 
 const templates: Record<string, string> = {
   cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}\n`,
@@ -36,12 +44,25 @@ watch(language, (v) => {
   if (!code.value) code.value = templates[v] || ''
 })
 
+watch(activeTab, (v) => {
+  if (v === 'solutions') {
+    loadSolutions()
+  }
+})
+
 async function load() {
   loading.value = true
   try {
     problem.value = await api.get(`/api/problems/${props.id}`)
     if (!code.value) code.value = templates[language.value] || ''
     await getCaptcha()
+    
+    // Get current user ID
+    const userStr = localStorage.getItem('etoj_user')
+    if (userStr) {
+      const user = JSON.parse(userStr)
+      currentUserId.value = user.id
+    }
   } catch (e: any) {
     toastError('Load failed: ' + e.message)
   } finally {
@@ -92,6 +113,55 @@ function copyMarkdown() {
   }
 }
 
+async function loadSolutions() {
+  loadingSolutions.value = true
+  try {
+    const data = await api.get(`/api/problems/${props.id}/solutions`)
+    solutions.value = data.solutions || []
+  } catch (e: any) {
+    toastError('Failed to load solutions: ' + e.message)
+  } finally {
+    loadingSolutions.value = false
+  }
+}
+
+function openSolutionEditor(solution?: any) {
+  editingSolution.value = solution || null
+  showSolutionEditor.value = true
+}
+
+async function saveSolution(data: { title: string; content: string }) {
+  try {
+    if (editingSolution.value) {
+      await api.put(`/api/solutions/${editingSolution.value.id}`, data)
+      success('Solution updated successfully')
+    } else {
+      await api.post('/api/solutions', {
+        problemId: props.id,
+        ...data
+      })
+      success('Solution created successfully')
+    }
+    showSolutionEditor.value = false
+    editingSolution.value = null
+    await loadSolutions()
+  } catch (e: any) {
+    toastError('Failed to save solution: ' + e.message)
+  }
+}
+
+async function deleteSolution(id: number) {
+  if (!confirm('确定要删除这个题解吗？')) return
+  
+  try {
+    await api.del(`/api/solutions/${id}`)
+    success('Solution deleted successfully')
+    await loadSolutions()
+  } catch (e: any) {
+    toastError('Failed to delete solution: ' + e.message)
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -132,6 +202,13 @@ onMounted(load)
               activeTab === 'submit' ? 'border-blue-500 text-blue-400' : 'border-transparent text-zinc-400 hover:text-zinc-100']"
           >
             提交答案
+          </button>
+          <button 
+            @click="activeTab = 'solutions'"
+            :class="['px-4 py-2 text-sm border-b-2 transition-colors', 
+              activeTab === 'solutions' ? 'border-blue-500 text-blue-400' : 'border-transparent text-zinc-400 hover:text-zinc-100']"
+          >
+            题解 ({{ solutions.length }})
           </button>
         </div>
       </div>
@@ -203,6 +280,80 @@ onMounted(load)
             </button>
           </div>
         </div>
+      </div>
+
+      <!-- 题解标签页 -->
+      <div v-if="activeTab === 'solutions'" class="space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="text-lg font-semibold">题解</h2>
+          <button 
+            @click="openSolutionEditor()"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm transition-colors"
+          >
+            写题解
+          </button>
+        </div>
+        
+        <div v-if="loadingSolutions" class="flex items-center justify-center py-12">
+          <div class="w-8 h-8 border-4 border-zinc-700 border-t-blue-500 rounded-full animate-spin"></div>
+        </div>
+        
+        <div v-else-if="solutions.length === 0" class="text-center py-12 text-zinc-500">
+          暂无题解，快来写第一个题解吧！
+        </div>
+        
+        <div v-else class="space-y-4">
+          <div 
+            v-for="solution in solutions" 
+            :key="solution.id"
+            class="bg-zinc-800 rounded-lg p-6"
+          >
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="text-lg font-semibold">{{ solution.title }}</h3>
+                <p class="text-sm text-zinc-400 mt-1">
+                  By {{ solution.username }} · {{ new Date(solution.created_at).toLocaleDateString() }}
+                </p>
+              </div>
+              <div class="flex gap-2">
+                <button 
+                  v-if="solution.user_id === currentUserId"
+                  @click="openSolutionEditor(solution)"
+                  class="text-sm text-blue-400 hover:text-blue-300"
+                >
+                  编辑
+                </button>
+                <button 
+                  v-if="solution.user_id === currentUserId"
+                  @click="deleteSolution(solution.id)"
+                  class="text-sm text-red-400 hover:text-red-300"
+                >
+                  删除
+                </button>
+              </div>
+            </div>
+            <MarkdownRenderer :content="solution.content" />
+            <SolutionComments 
+              :solution-id="solution.id" 
+              :current-user-id="currentUserId || undefined"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 题解编辑器对话框 -->
+    <div v-if="showSolutionEditor" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">
+          {{ editingSolution ? '编辑题解' : '写题解' }}
+        </h3>
+        <SolutionEditor
+          :problem-id="Number(props.id)"
+          :existing-solution="editingSolution"
+          @save="saveSolution"
+          @cancel="showSolutionEditor = false; editingSolution = null"
+        />
       </div>
     </div>
   </div>
