@@ -347,7 +347,7 @@ app.post("/api/submissions", authMiddleware, async (c) => {
       return c.json({ error: "Missing fields" }, 400);
     
     // 验证语言支持
-    const supportedLanguages = ['c', 'cpp98', 'cpp11', 'cpp14', 'cpp17', 'cpp20', 'cpp23'];
+    const supportedLanguages = ['c', 'cpp98', 'cpp11', 'cpp14', 'cpp17', 'cpp20', 'cpp23', 'php'];
     if (!supportedLanguages.includes(language)) {
       return c.json({ error: `Unsupported language: ${language}. Supported languages: ${supportedLanguages.join(', ')}` }, 400);
     }

@@ -34,6 +34,7 @@ const languageMap: Record<string, string> = {
   cpp17: 'cpp',
   cpp20: 'cpp',
   cpp23: 'cpp',
+  php: 'php',
   java: 'java',
   python: 'python',
   javascript: 'javascript',

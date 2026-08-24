@@ -177,4 +177,5 @@ export const LANGUAGES = [
   { value: "cpp17", label: "C++17", ext: "cpp" },
   { value: "cpp20", label: "C++20", ext: "cpp" },
   { value: "cpp23", label: "C++23", ext: "cpp" },
+  { value: "php", label: "PHP", ext: "php" },
 ];
