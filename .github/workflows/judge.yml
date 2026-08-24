@@ -16,6 +16,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Record workflow start time
+        run: |
+          # 记录workflow开始时间
+          WORKFLOW_START_TIME=$(date +%s%3N)
+          echo "WORKFLOW_START_TIME=$WORKFLOW_START_TIME" >> $GITHUB_ENV
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -62,16 +68,18 @@ jobs:
           USER_ID: ${{ github.event.client_payload.userId }}
           API_TOKEN: ${{ secrets.API_TOKEN }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_STARTED: ${{ github.event.client_payload.startTime }}
-          GITHUB_JOB_STARTED: ${{ github.event.started_at }}
+          WORKFLOW_START_TIME: ${{ env.WORKFLOW_START_TIME }}
         run: |
-          # 计算实际评测延迟：从任务开始到评测完成
-          if [ -n "$GITHUB_JOB_STARTED" ]; then
-            JOB_START_TIME=$(date -d "$GITHUB_JOB_STARTED" +%s%3N 2>/dev/null || echo "0")
+          # 计算评测延迟：从workflow开始到评测完成
+          if [ -n "$WORKFLOW_START_TIME" ]; then
             END_TIME=$(date +%s%3N)
-            JUDGE_LATENCY_MS=$((END_TIME - JOB_START_TIME))
+            JUDGE_LATENCY_MS=$((END_TIME - WORKFLOW_START_TIME))
+            echo "Workflow start: $WORKFLOW_START_TIME"
+            echo "End time: $END_TIME"
+            echo "Judge latency: ${JUDGE_LATENCY_MS}ms"
           else
             JUDGE_LATENCY_MS=0
+            echo "No start time available"
           fi
           
           if [ -f judge_output.txt ]; then
@@ -100,11 +108,16 @@ jobs:
           echo "GitHub Run ID: $GITHUB_RUN_ID"
           echo "Judge latency: ${JUDGE_LATENCY_MS}ms"
           
+          # Export judge latency for node script
+          export JUDGE_LATENCY_MS
+          
           node -e "
             const judgeOutput = process.env.JUDGE_OUTPUT || '{}';
             const compilerOutput = process.env.COMPILER_OUTPUT || '';
             const githubRunId = process.env.GITHUB_RUN_ID || '';
             const judgeLatencyMs = process.env.JUDGE_LATENCY_MS || '0';
+            
+            console.log('Environment JUDGE_LATENCY_MS:', judgeLatencyMs);
             
             let result;
             try {
