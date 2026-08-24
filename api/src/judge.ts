@@ -29,6 +29,12 @@ export async function triggerJudge(
   const [owner, name] = repo.split("/");
   const url = `https://api.github.com/repos/${owner}/${name}/dispatches`;
   
+  // 添加开始时间到payload
+  const enhancedPayload = {
+    ...payload,
+    startTime: new Date().toISOString()
+  };
+  
   const res = await fetch(url, {
     method: "POST",
     headers: {
@@ -39,7 +45,7 @@ export async function triggerJudge(
     },
     body: JSON.stringify({
       event_type: "judge-submission",
-      client_payload: payload,
+      client_payload: enhancedPayload,
     }),
   });
   

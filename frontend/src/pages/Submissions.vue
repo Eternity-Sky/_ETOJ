@@ -23,15 +23,17 @@ const healthLoading = ref(false);
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize));
 
-const averageRunTime = computed(() => {
+const averageJudgeTime = computed(() => {
   const completedSubmissions = items.value.filter(s => 
     s.status !== 'pending' && s.status !== 'judging' && s.judge_latency_ms !== null && s.judge_latency_ms !== undefined
   );
   
   if (completedSubmissions.length === 0) return null;
   
-  const totalTime = completedSubmissions.reduce((sum, s) => sum + (s.judge_latency_ms || 0), 0);
-  return Math.round(totalTime / completedSubmissions.length);
+  const totalTimeMs = completedSubmissions.reduce((sum, s) => sum + (s.judge_latency_ms || 0), 0);
+  const averageMs = totalTimeMs / completedSubmissions.length;
+  // 转换为秒，保留1位小数
+  return (averageMs / 1000).toFixed(1);
 });
 
 async function retest(submissionId: number) {
@@ -104,8 +106,8 @@ onMounted(() => {
           <span class="font-medium">{{ judgeHealth.message }}</span>
         </div>
         <div class="text-sm text-zinc-500">
-          <span v-if="averageRunTime !== null" class="mr-4">
-            平均评测时间: {{ averageRunTime }}ms
+          <span v-if="averageJudgeTime !== null" class="mr-4">
+            平均评测时间: {{ averageJudgeTime }}s
           </span>
           <span v-if="judgeHealth.latency !== null">
             延迟: {{ judgeHealth.latency }}ms
