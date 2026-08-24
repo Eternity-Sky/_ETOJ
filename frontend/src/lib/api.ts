@@ -67,6 +67,9 @@ export const api = {
   markAllNotificationsRead: () => request<{ message: string }>('/api/notifications/read-all', { method: 'POST' }),
   sendNotification: (data: { userId: number; type: string; title: string; message: string }) => 
     request<{ message: string }>('/api/admin/notifications', { method: 'POST', body: data }),
+  
+  // User API
+  updateEmail: (email: string) => request<{ message: string }>('/api/auth/email', { method: 'PUT', body: { email } }),
 };
 
 export type User = {

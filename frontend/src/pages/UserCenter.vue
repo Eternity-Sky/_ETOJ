@@ -2,9 +2,42 @@
 import { RouterLink } from "vue-router";
 import { ref, onMounted, computed } from "vue";
 import { api, type User, STATUS_COLOR, STATUS_LABEL } from "@/lib/api";
+import { useToast } from "@/lib/toast";
+
+const { success, error: toastError } = useToast();
 
 const user = ref<User | null>(null);
 const recent = ref<any[]>([]);
+const showEmailDialog = ref(false);
+const newEmail = ref("");
+
+async function load() {
+  user.value = await api.get("/api/auth/me");
+  const res = await api.get<any>("/api/submissions?pageSize=10");
+  recent.value = res.items || [];
+}
+
+async function updateEmail() {
+  if (!newEmail.value) {
+    toastError("Email is required");
+    return;
+  }
+  
+  try {
+    await api.updateEmail(newEmail.value);
+    success("Email updated successfully");
+    showEmailDialog.value = false;
+    newEmail.value = "";
+    await load();
+  } catch (e: any) {
+    toastError(e.message || "Failed to update email");
+  }
+}
+
+function openEmailDialog() {
+  newEmail.value = user.value?.email || "";
+  showEmailDialog.value = true;
+}
 
 const solveRate = computed(() => {
   if (!user.value) return 0;
@@ -12,12 +45,6 @@ const solveRate = computed(() => {
   const rate = Math.round((user.value.solved_count * 100) / user.value.submissions_count);
   return Math.min(rate, 100);
 });
-
-async function load() {
-  user.value = await api.get("/api/auth/me");
-  const res = await api.get<any>("/api/submissions?pageSize=10");
-  recent.value = res.items || [];
-}
 
 onMounted(load);
 </script>
@@ -41,7 +68,10 @@ onMounted(load);
             >
           </div>
           <div class="text-sm text-zinc-500">
-            {{ user.email }} · 注册于
+            <span @click="openEmailDialog" class="cursor-pointer hover:text-zinc-700 underline">
+              {{ user.email || 'No email set' }}
+            </span>
+            · 注册于
             {{ new Date(user.created_at!).toLocaleDateString() }}
           </div>
         </div>
@@ -121,6 +151,28 @@ onMounted(load);
           </tr>
         </tbody>
       </table>
+    </div>
+    
+    <!-- Email Update Dialog -->
+    <div v-if="showEmailDialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-full max-w-md border border-zinc-200">
+        <h3 class="text-lg font-semibold mb-4">Update Email</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm text-zinc-600 mb-1">Email Address</label>
+            <input 
+              v-model="newEmail" 
+              type="email" 
+              class="w-full border border-zinc-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              placeholder="your@email.com"
+            >
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+          <button @click="showEmailDialog = false" class="border border-zinc-300 hover:border-zinc-400 text-zinc-700 px-4 py-2 rounded-md text-sm transition-colors">Cancel</button>
+          <button @click="updateEmail" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm transition-colors">Update</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

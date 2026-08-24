@@ -255,6 +255,41 @@ app.get("/api/auth/me", authMiddleware, async (c) => {
   return c.json(user);
 });
 
+app.put("/api/auth/email", authMiddleware, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const { email } = await c.req.json();
+    
+    if (!email) {
+      return c.json({ error: "Email is required" }, 400);
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return c.json({ error: "Invalid email format" }, 400);
+    }
+    
+    // Check if email is already used by another user
+    const existingUser = await c.env.DB.prepare(
+      "SELECT id FROM users WHERE email = ? AND id != ?"
+    ).bind(email, userId).first();
+    
+    if (existingUser) {
+      return c.json({ error: "Email already in use" }, 400);
+    }
+    
+    // Update user email
+    await c.env.DB.prepare(
+      "UPDATE users SET email = ? WHERE id = ?"
+    ).bind(email, userId).run();
+    
+    return c.json({ message: "Email updated successfully" });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
 app.get("/api/problems", async (c) => {
   const page = Number(c.req.query("page") || 1);
   const pageSize = Number(c.req.query("pageSize") || 20);
