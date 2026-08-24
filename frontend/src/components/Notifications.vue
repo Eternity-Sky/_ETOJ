@@ -71,6 +71,10 @@ function toggleDropdown() {
 
 async function loadNotifications() {
   try {
+    // 检查是否有token
+    if (!localStorage.getItem('etoj_token')) {
+      return
+    }
     const data = await api.getNotifications()
     notifications.value = data.notifications
     unreadCount.value = data.unreadCount

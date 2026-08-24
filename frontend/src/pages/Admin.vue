@@ -210,17 +210,17 @@ function editProblem(problem: any) {
   }
   
   // 如果有旧的分离字段，合并到markdown中
-  let md = problem.description || ''
-  if (problem.input_format && !md.includes('## 输入格式')) {
+  let md = (problem.description || '').toString()
+  if (problem.input_format && md && !md.includes('## 输入格式')) {
     md += `\n\n## 输入格式\n\n${problem.input_format}`
   }
-  if (problem.output_format && !md.includes('## 输出格式')) {
+  if (problem.output_format && md && !md.includes('## 输出格式')) {
     md += `\n\n## 输出格式\n\n${problem.output_format}`
   }
-  if (problem.sample_input && !md.includes('## 样例输入')) {
+  if (problem.sample_input && md && !md.includes('## 样例输入')) {
     md += `\n\n## 样例输入\n\n\`\`\`\n${problem.sample_input}\n\`\`\``
   }
-  if (problem.sample_output && !md.includes('## 样例输出')) {
+  if (problem.sample_output && md && !md.includes('## 样例输出')) {
     md += `\n\n## 样例输出\n\n\`\`\`\n${problem.sample_output}\n\`\`\``
   }
   
