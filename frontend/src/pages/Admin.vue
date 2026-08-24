@@ -130,6 +130,9 @@ async function renumberProblems() {
     loading.value = true
     const result = await api.post('/api/admin/renumber-problems')
     success(result.message || 'Renumbering successful')
+    // 强制刷新：先清空本地数据，再重新加载
+    problems.value = []
+    stats.value = null
     await loadProblems()
     await loadStats()
   } catch (e: any) {
