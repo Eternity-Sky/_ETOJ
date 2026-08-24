@@ -87,8 +87,8 @@ async function runCase(input) {
     child.on('error', e => { clearTimeout(t); resolve({ output, timeMs: Date.now() - start, memoryKb: 0, timedOut, error: e.message }); });
     child.on('close', (code) => {
       clearTimeout(t);
-      // 简单估算内存使用：基于输出大小
-      const estimatedMemory = Math.max(0, Math.floor(output.length / 1024) * 100); // 粗略估算
+      // 简单估算内存使用：基于输出大小和程序大小
+      const estimatedMemory = Math.max(1, Math.floor((output.length + code.length) / 1024) * 50); // 粗略估算，至少1KB
       resolve({ output, timeMs: Date.now() - start, memoryKb: estimatedMemory, timedOut, error: code !== 0 && !timedOut ? (error || `exit ${code}`) : undefined });
     });
     
@@ -130,6 +130,18 @@ async function main() {
   let totalTime = 0, maxMem = 0;
   let allPass = true;
   let failedReason = null;
+
+  // 如果没有测试用例，直接返回错误
+  if (!testCases || testCases.length === 0) {
+    console.error('No test cases provided');
+    emit({
+      status: 'system_error',
+      runTimeMs: 0,
+      memoryKb: 0,
+      details: { passed: false, error: 'No test cases provided', details: [] }
+    });
+    return;
+  }
 
   for (let i = 0; i < testCases.length; i++) {
     const tc = testCases[i];

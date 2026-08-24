@@ -162,8 +162,8 @@ jobs:
               userId: Number(process.env.USER_ID),
               status: result.status || 'runtime_error',
               resultJson: JSON.stringify(result.details),
-              runTimeMs: result.runTimeMs || null,
-              memoryKb: result.memoryKb || null,
+              runTimeMs: result.runTimeMs !== undefined ? result.runTimeMs : null,
+              memoryKb: result.memoryKb !== undefined ? result.memoryKb : null,
               accepted: result.status === 'accepted',
               githubRunId: githubRunId,
               judgeLatencyMs: Number(judgeLatencyMs)
