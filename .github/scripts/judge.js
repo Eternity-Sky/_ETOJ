@@ -80,16 +80,40 @@ async function runCase(input) {
     let timedOut = false;
     let output = '';
     let error = '';
-    const child = spawn(runCmd[0], runCmd.slice(1), { cwd: workdir });
+    
+    // 使用 /usr/bin/time 来获取真实的内存使用
+    const timeCmd = '/usr/bin/time';
+    const timeArgs = ['-f', '%M', '--quiet', ...runCmd];
+    
+    const child = spawn(timeCmd, timeArgs, { cwd: workdir });
     const t = setTimeout(() => { timedOut = true; child.kill('SIGKILL'); }, timeLimitMs);
+    
+    // 收集 /usr/bin/time 的输出（内存使用KB数）
+    let timeOutput = '';
+    const stderrReader = child.stderr.on('data', d => {
+      const data = d.toString();
+      error += data;
+      timeOutput += data; // /usr/bin/time 输出到stderr
+    });
+    
     child.stdout.on('data', d => output += d.toString());
-    child.stderr.on('data', d => error += d.toString());
     child.on('error', e => { clearTimeout(t); resolve({ output, timeMs: Date.now() - start, memoryKb: 0, timedOut, error: e.message }); });
     child.on('close', (code) => {
       clearTimeout(t);
-      // 简单估算内存使用：基于输出大小和程序大小
-      const estimatedMemory = Math.max(1, Math.floor((output.length + code.length) / 1024) * 50); // 粗略估算，至少1KB
-      resolve({ output, timeMs: Date.now() - start, memoryKb: estimatedMemory, timedOut, error: code !== 0 && !timedOut ? (error || `exit ${code}`) : undefined });
+      
+      // 从 /usr/bin/time 输出中提取内存使用（KB）
+      let memoryKb = 0;
+      const timeMatch = timeOutput.match(/(\d+)/);
+      if (timeMatch) {
+        memoryKb = parseInt(timeMatch[1], 10);
+      }
+      
+      // 如果获取失败，使用基本估算
+      if (memoryKb === 0) {
+        memoryKb = Math.max(1, Math.floor((output.length + code.length) / 1024) * 50);
+      }
+      
+      resolve({ output, timeMs: Date.now() - start, memoryKb, timedOut, error: code !== 0 && !timedOut ? (error || `exit ${code}`) : undefined });
     });
     
     // 捕获stdin错误，避免EPIPE导致程序崩溃
