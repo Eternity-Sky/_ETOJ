@@ -8,7 +8,7 @@
         v-model="newComment"
         class="w-full border border-zinc-300 rounded-md p-3 text-sm focus:outline-none focus:border-blue-500 resize-none"
         rows="3"
-        placeholder="Write a comment..."
+        placeholder="Write a comment... (Markdown & LaTeX supported)"
       ></textarea>
       <button 
         @click="submitComment"
@@ -47,7 +47,9 @@
             Delete
           </button>
         </div>
-        <p class="text-sm text-zinc-700">{{ comment.content }}</p>
+        <div class="text-sm text-zinc-700">
+          <MarkdownRenderer :content="comment.content" />
+        </div>
       </div>
     </div>
   </div>
@@ -56,6 +58,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { api } from '@/lib/api'
+import MarkdownRenderer from './MarkdownRenderer.vue'
 
 const props = defineProps<{
   solutionId: number
