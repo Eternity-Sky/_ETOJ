@@ -702,6 +702,67 @@ app.post("/api/admin/clear-submissions", async (c) => {
   }
 });
 
+// 管理端点 - 自动重新编号题目
+app.post("/api/admin/renumber-problems", authMiddleware, adminMiddleware, async (c) => {
+  try {
+    // 获取所有题目，按ID排序
+    const problems = await c.env.DB.prepare("SELECT id FROM problems ORDER BY id").all();
+    
+    if (!problems || problems.results.length === 0) {
+      return c.json({ message: "没有题目需要重新编号" });
+    }
+    
+    // 重新编号：从1开始连续编号
+    const idMap = new Map();
+    for (let i = 0; i < problems.results.length; i++) {
+      const oldId = problems.results[i].id;
+      const newId = i + 1;
+      idMap.set(oldId, newId);
+    }
+    
+    // 使用两步法：先更新为负ID，再更新为正ID，避免外键冲突
+    // 第一步：将所有ID更新为负数
+    for (const [oldId, newId] of idMap) {
+      if (oldId !== newId) {
+        await c.env.DB.prepare("UPDATE problems SET id = ? WHERE id = ?")
+          .bind(-newId, oldId)
+          .run();
+      }
+    }
+    
+    // 第二步：将负ID更新为正ID
+    for (const [oldId, newId] of idMap) {
+      if (oldId !== newId) {
+        await c.env.DB.prepare("UPDATE problems SET id = ? WHERE id = ?")
+          .bind(newId, -newId)
+          .run();
+      }
+    }
+    
+    // 更新slug以匹配新的ID
+    for (const [oldId, newId] of idMap) {
+      if (oldId !== newId) {
+        await c.env.DB.prepare("UPDATE problems SET slug = ? WHERE id = ?")
+          .bind(`problem-${newId}`, newId)
+          .run();
+      }
+    }
+    
+    // 更新提交记录中的problem_id
+    for (const [oldId, newId] of idMap) {
+      if (oldId !== newId) {
+        await c.env.DB.prepare("UPDATE submissions SET problem_id = ? WHERE problem_id = ?")
+          .bind(newId, oldId)
+          .run();
+      }
+    }
+    
+    return c.json({ message: `成功重新编号 ${problems.results.length} 个题目` });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
 app.get("/api/admin/stats", async (c) => {
   try {
     const submissions = await c.env.DB.prepare("SELECT COUNT(*) as c FROM submissions").first();
