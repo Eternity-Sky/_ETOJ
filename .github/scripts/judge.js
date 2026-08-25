@@ -12,7 +12,7 @@ if (!global.fetch) {
 async function getTestCases(problemId) {
   try {
     console.log(`从ETOJ API获取题目 ${problemId} 的测试点...`);
-    const apiResponse = await fetch(`https://etoj-api.tengyumo666.workers.dev/api/problems/${problemId}/testcases`);
+    const apiResponse = await fetch(`https://api.csp.qzz.io/api/problems/${problemId}/testcases`);
     if (apiResponse.ok) {
       const data = await apiResponse.json();
       console.log(`成功获取 ${data.testCases?.length || 0} 个测试点`);

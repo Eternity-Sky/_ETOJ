@@ -1088,15 +1088,24 @@ app.post("/api/submissions/retest", authMiddleware, async (c) => {
 app.get("/api/problems/:id/testcases", async (c) => {
   try {
     const id = Number(c.req.param("id"));
+    console.log(`获取题目 ${id} 的测试点`);
     const problem = await c.env.DB.prepare("SELECT test_cases_json FROM problems WHERE id = ?").bind(id).first();
     
     if (!problem) {
+      console.error(`题目 ${id} 不存在`);
       return c.json({ error: "Problem not found" }, 404);
     }
     
+    console.log(`题目 ${id} 的test_cases_json长度:`, problem.test_cases_json.length);
     const testCases = JSON.parse(problem.test_cases_json);
-    return c.json({ testCases });
+    console.log(`解析后的测试点数量:`, testCases.length);
+    
+    const response = { testCases };
+    console.log(`响应数据大小:`, JSON.stringify(response).length);
+    
+    return c.json(response);
   } catch (e: any) {
+    console.error('获取测试点失败:', e);
     return c.json({ error: e.message }, 500);
   }
 });
