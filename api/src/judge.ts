@@ -4,7 +4,7 @@ export interface JudgePayload {
   userId: number;
   language: string;
   code: string;
-  testCases: Array<{input: string, output: string}>;
+  testCases: Array<{input: string, output: string}>; // 改为可选，测试点过大时不通过payload传递
   timeLimitMs: number;
   memoryLimitMb: number;
 }
@@ -29,10 +29,17 @@ export async function triggerJudge(
   const [owner, name] = repo.split("/");
   const url = `https://api.github.com/repos/${owner}/${name}/dispatches`;
   
+  // 不通过payload传递测试点，让GitHub Actions从API获取
+  const payloadWithoutTestCases = {
+    ...payload,
+    testCases: [] // 清空测试点，减少payload大小
+  };
+  
   // 添加开始时间到payload
   const enhancedPayload = {
-    ...payload,
-    startTime: new Date().toISOString()
+    ...payloadWithoutTestCases,
+    startTime: new Date().toISOString(),
+    useRemoteTestCases: true // 标记需要从API获取测试点
   };
   
   const res = await fetch(url, {

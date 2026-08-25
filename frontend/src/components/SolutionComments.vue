@@ -8,15 +8,24 @@
         v-model="newComment"
         class="w-full border border-zinc-300 rounded-md p-3 text-sm focus:outline-none focus:border-blue-500 resize-none"
         rows="3"
-        placeholder="Write a comment... (Markdown & LaTeX supported)"
+        :placeholder="replyingTo ? `Replying to ${replyingTo.username}...` : 'Write a comment... (Markdown & LaTeX supported)'"
       ></textarea>
-      <button 
-        @click="submitComment"
-        :disabled="!newComment.trim() || submitting"
-        class="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm transition-colors disabled:opacity-50"
-      >
-        {{ submitting ? 'Posting...' : 'Post Comment' }}
-      </button>
+      <div class="flex gap-2 mt-2">
+        <button 
+          @click="submitComment"
+          :disabled="!newComment.trim() || submitting"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm transition-colors disabled:opacity-50"
+        >
+          {{ submitting ? 'Posting...' : (replyingTo ? 'Reply' : 'Post Comment') }}
+        </button>
+        <button 
+          v-if="replyingTo"
+          @click="cancelReply"
+          class="border border-zinc-300 text-zinc-700 px-4 py-2 rounded-md text-sm transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
     
     <!-- Comments list -->
@@ -30,7 +39,7 @@
     
     <div v-else class="space-y-4">
       <div 
-        v-for="comment in comments" 
+        v-for="comment in topLevelComments" 
         :key="comment.id"
         class="border border-zinc-200 rounded-md p-4 bg-zinc-50"
       >
@@ -39,16 +48,50 @@
             <span class="font-medium text-sm">{{ comment.username }}</span>
             <span class="text-xs text-zinc-500">{{ new Date(comment.created_at).toLocaleString() }}</span>
           </div>
-          <button 
-            v-if="comment.user_id === currentUserId"
-            @click="deleteComment(comment.id)"
-            class="text-xs text-red-500 hover:text-red-600"
-          >
-            Delete
-          </button>
+          <div class="flex gap-2">
+            <button 
+              @click="startReply(comment)"
+              class="text-xs text-blue-500 hover:text-blue-600"
+            >
+              Reply
+            </button>
+            <button 
+              v-if="comment.user_id === currentUserId"
+              @click="deleteComment(comment.id)"
+              class="text-xs text-red-500 hover:text-red-600"
+            >
+              Delete
+            </button>
+          </div>
         </div>
         <div class="text-sm text-zinc-700">
           <MarkdownRenderer :content="comment.content" />
+        </div>
+        
+        <!-- Replies -->
+        <div v-if="getReplies(comment.id).length > 0" class="mt-4 pl-4 border-l-2 border-zinc-200 space-y-3">
+          <div 
+            v-for="reply in getReplies(comment.id)" 
+            :key="reply.id"
+            class="border border-zinc-200 rounded-md p-3 bg-white"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="font-medium text-sm">{{ reply.username }}</span>
+                <span class="text-xs text-zinc-500">{{ new Date(reply.created_at).toLocaleString() }}</span>
+              </div>
+              <button 
+                v-if="reply.user_id === currentUserId"
+                @click="deleteComment(reply.id)"
+                class="text-xs text-red-500 hover:text-red-600"
+              >
+                Delete
+              </button>
+            </div>
+            <div class="text-sm text-zinc-700">
+              <MarkdownRenderer :content="reply.content" />
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -56,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { api } from '@/lib/api'
 import MarkdownRenderer from './MarkdownRenderer.vue'
 
@@ -69,6 +112,25 @@ const comments = ref<any[]>([])
 const newComment = ref('')
 const submitting = ref(false)
 const loading = ref(false)
+const replyingTo = ref<any>(null)
+
+const topLevelComments = computed(() => {
+  return comments.value.filter(c => !c.parent_id)
+})
+
+function getReplies(parentId: number) {
+  return comments.value.filter(c => c.parent_id === parentId)
+}
+
+function startReply(comment: any) {
+  replyingTo.value = comment
+  newComment.value = ''
+}
+
+function cancelReply() {
+  replyingTo.value = null
+  newComment.value = ''
+}
 
 async function loadComments() {
   loading.value = true
@@ -88,9 +150,11 @@ async function submitComment() {
   submitting.value = true
   try {
     await api.post(`/api/solutions/${props.solutionId}/comments`, {
-      content: newComment.value
+      content: newComment.value,
+      parentId: replyingTo.value ? replyingTo.value.id : null
     })
     newComment.value = ''
+    replyingTo.value = null
     await loadComments()
   } catch (e: any) {
     console.error('Failed to post comment:', e)

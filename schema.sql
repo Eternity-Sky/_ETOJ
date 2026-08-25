@@ -36,10 +36,13 @@ CREATE TABLE IF NOT EXISTS solution_comments (
   solution_id INTEGER NOT NULL,
   user_id INTEGER NOT NULL,
   content TEXT NOT NULL,
+  parent_id INTEGER DEFAULT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (solution_id) REFERENCES solutions(id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (parent_id) REFERENCES solution_comments(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_solution_comments_solution_id ON solution_comments(solution_id);
 CREATE INDEX IF NOT EXISTS idx_solution_comments_user_id ON solution_comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_solution_comments_parent_id ON solution_comments(parent_id);

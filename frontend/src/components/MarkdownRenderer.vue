@@ -36,10 +36,6 @@ async function renderMarkdown() {
 
   // 渲染行内公式 $...$ (使用更严格的匹配)
   html = html.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (match: string, latex: string) => {
-    // 跳过纯数字的价格格式
-    if (/^[0-9,.]+$/.test(latex.trim())) {
-      return match
-    }
     try {
       return katex.renderToString(latex.trim(), { 
         displayMode: false,

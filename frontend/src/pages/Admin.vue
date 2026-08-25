@@ -342,8 +342,14 @@ function handleTestCaseFile(event: Event) {
     const reader = new FileReader()
     reader.onload = (e) => {
       const content = e.target?.result as string
+      console.log('文件内容长度:', content.length)
+      console.log('文件内容前200字符:', content.substring(0, 200))
+      
       // 解析文件内容：奇数行是输入，偶数行是输出
       const lines = content.split('\n').filter(line => line.trim())
+      console.log('解析后的行数:', lines.length)
+      console.log('前10行内容:', lines.slice(0, 10))
+      
       if (lines.length > 0) {
         testCases.value = []
         for (let i = 0; i < lines.length; i += 2) {
@@ -351,6 +357,8 @@ function handleTestCaseFile(event: Event) {
           const output = lines[i + 1] || ''
           testCases.value.push({ input, output })
         }
+        console.log('生成的测试点数量:', testCases.value.length)
+        console.log('前3个测试点:', testCases.value.slice(0, 3))
       }
     }
     reader.readAsText(file)
@@ -358,7 +366,11 @@ function handleTestCaseFile(event: Event) {
 }
 
 function updateTestCasesJson() {
-  problemForm.value.test_cases_json = JSON.stringify(testCases.value.filter(tc => tc.input || tc.output))
+  const filtered = testCases.value.filter(tc => tc.input || tc.output)
+  console.log('更新JSON前的测试点数量:', testCases.value.length)
+  console.log('过滤后的测试点数量:', filtered.length)
+  problemForm.value.test_cases_json = JSON.stringify(filtered)
+  console.log('JSON字符串长度:', problemForm.value.test_cases_json.length)
 }
 
 // 监听测试点变化，自动更新JSON

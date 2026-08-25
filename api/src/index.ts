@@ -839,8 +839,20 @@ app.post("/api/problems", authMiddleware, async (c) => {
     const userId = c.get("userId");
     const { id, title, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json } = await c.req.json();
     
+    console.log('创建题目 - 接收到的数据:', { id, title, difficulty, test_cases_json_length: test_cases_json?.length });
+    
     if (!id || !title || !description || !test_cases_json) {
       return c.json({ error: "Missing required fields" }, 400);
+    }
+    
+    // 验证test_cases_json格式
+    let parsedTestCases;
+    try {
+      parsedTestCases = JSON.parse(test_cases_json);
+      console.log('解析测试点成功，数量:', Array.isArray(parsedTestCases) ? parsedTestCases.length : '不是数组');
+    } catch (e) {
+      console.error('test_cases_json解析失败:', e);
+      return c.json({ error: "Invalid test_cases_json format" }, 400);
     }
     
     // 检查ID是否已存在
@@ -859,11 +871,14 @@ app.post("/api/problems", authMiddleware, async (c) => {
       .run();
     
     if (!result.success) {
+      console.error('数据库插入失败:', result);
       return c.json({ error: "Failed to create problem" }, 400);
     }
     
+    console.log('题目创建成功，ID:', id);
     return c.json({ id, message: "题目创建成功" });
   } catch (e: any) {
+    console.error('创建题目异常:', e);
     return c.json({ error: e.message }, 500);
   }
 });
@@ -874,6 +889,18 @@ app.put("/api/problems/:id", authMiddleware, adminMiddleware, async (c) => {
     const id = Number(c.req.param("id"));
     const { title, description, input_format, output_format, sample_input, sample_output, time_limit_ms, memory_limit_mb, difficulty, test_cases_json } = await c.req.json();
     
+    console.log('更新题目 - 接收到的数据:', { id, title, difficulty, test_cases_json_length: test_cases_json?.length });
+    
+    // 验证test_cases_json格式
+    let parsedTestCases;
+    try {
+      parsedTestCases = JSON.parse(test_cases_json);
+      console.log('解析测试点成功，数量:', Array.isArray(parsedTestCases) ? parsedTestCases.length : '不是数组');
+    } catch (e) {
+      console.error('test_cases_json解析失败:', e);
+      return c.json({ error: "Invalid test_cases_json format" }, 400);
+    }
+    
     const result = await c.env.DB.prepare(
       `UPDATE problems SET title = ?, description = ?, input_format = ?, output_format = ?, sample_input = ?, sample_output = ?, time_limit_ms = ?, memory_limit_mb = ?, difficulty = ?, test_cases_json = ? WHERE id = ?`,
     )
@@ -881,11 +908,14 @@ app.put("/api/problems/:id", authMiddleware, adminMiddleware, async (c) => {
       .run();
     
     if (!result.success) {
+      console.error('数据库更新失败:', result);
       return c.json({ error: "Failed to update problem" }, 400);
     }
     
-    return c.json({ message: "题目更新成功" });
+    console.log('题目更新成功，ID:', id);
+    return c.json({ id, message: "题目更新成功" });
   } catch (e: any) {
+    console.error('更新题目异常:', e);
     return c.json({ error: e.message }, 500);
   }
 });
@@ -1050,6 +1080,23 @@ app.post("/api/submissions/retest", authMiddleware, async (c) => {
     return c.json({ id: submissionId, message: "重测成功" });
   } catch (e: any) {
     console.error("重测失败:", e.message);
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// 获取题目测试点（用于GitHub Actions评测）
+app.get("/api/problems/:id/testcases", async (c) => {
+  try {
+    const id = Number(c.req.param("id"));
+    const problem = await c.env.DB.prepare("SELECT test_cases_json FROM problems WHERE id = ?").bind(id).first();
+    
+    if (!problem) {
+      return c.json({ error: "Problem not found" }, 404);
+    }
+    
+    const testCases = JSON.parse(problem.test_cases_json);
+    return c.json({ testCases });
+  } catch (e: any) {
     return c.json({ error: e.message }, 500);
   }
 });
@@ -1280,15 +1327,32 @@ app.post("/api/solutions/:solutionId/comments", authMiddleware, async (c) => {
   try {
     const solutionId = Number(c.req.param("solutionId"));
     const userId = c.get("userId");
-    const { content } = await c.req.json();
+    const { content, parentId } = await c.req.json();
     
     if (!content) {
       return c.json({ error: "Content is required" }, 400);
     }
     
     const result = await c.env.DB.prepare(
-      "INSERT INTO solution_comments (solution_id, user_id, content) VALUES (?, ?, ?)"
-    ).bind(solutionId, userId, content).run();
+      "INSERT INTO solution_comments (solution_id, user_id, content, parent_id) VALUES (?, ?, ?, ?)"
+    ).bind(solutionId, userId, content, parentId || null).run();
+    
+    // 如果是回复，发送通知给被回复的用户
+    if (parentId) {
+      const parentComment: any = await c.env.DB.prepare(
+        "SELECT user_id FROM solution_comments WHERE id = ?"
+      ).bind(parentId).first();
+      
+      if (parentComment && parentComment.user_id !== userId) {
+        await createNotification(
+          c.env.DB,
+          parentComment.user_id,
+          'info',
+          'New Reply',
+          'Someone replied to your comment on a solution'
+        );
+      }
+    }
     
     return c.json({ id: result.meta.last_row_id, message: "Comment added" });
   } catch (e: any) {
