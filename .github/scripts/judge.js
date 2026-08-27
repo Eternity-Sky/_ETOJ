@@ -234,6 +234,12 @@ async function main() {
         runCmd = ['node', srcPath];
       } else if (language === 'typescript') {
         try {
+          // Create output directory
+          const outDir = path.join(workdir, 'out');
+          if (!fs.existsSync(outDir)) {
+            fs.mkdirSync(outDir, { recursive: true });
+          }
+
           execFileSync(
             'tsc',
             [
@@ -241,23 +247,37 @@ async function main() {
               '--target',
               'ES2020',
               '--module',
-              'commonjs'
+              'commonjs',
+              '--skipLibCheck',
+              '--pretty',
+              'false',
+              '--outDir',
+              outDir
             ],
             {
               cwd: workdir,
-              timeout: 10000,
+              timeout: 30000,
               stdio: 'pipe'
             }
           );
 
-          const jsFile = srcPath.replace('.ts', '.js');
+          const jsFile = path.join(outDir, path.basename(srcPath, '.ts') + '.js');
 
           runCmd = ['node', jsFile];
 
         } catch (e) {
+          const stderr = e.stderr ? e.stderr.toString() : '';
+          const stdout = e.stdout ? e.stdout.toString() : '';
+
+          const errorMsg =
+            stderr.trim() ||
+            stdout.trim() ||
+            e.message ||
+            'TypeScript compilation error';
+
           compileStatus = {
             status: 'compile_error',
-            msg: e.stderr?.toString() || e.message
+            msg: errorMsg
           };
         }
       } else if (language === 'csharp') {
