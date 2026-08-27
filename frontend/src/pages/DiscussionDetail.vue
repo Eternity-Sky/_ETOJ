@@ -2,8 +2,11 @@
 import { ref, onMounted } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { api } from '@/lib/api'
+import MarkdownContent from '@/components/MarkdownContent.vue'
+import { useToast } from '@/lib/toast'
 
 const route = useRoute()
+const { success, error: toastError } = useToast()
 
 const discussion = ref<any>(null)
 const replies = ref<any[]>([])
@@ -22,7 +25,10 @@ async function load() {
 }
 
 async function reply() {
-  if (!content.value.trim()) return
+  if (!content.value.trim()) {
+    toastError('请输入回复内容')
+    return
+  }
 
   submitting.value = true
 
@@ -30,12 +36,15 @@ async function reply() {
     await api.post(
       `/api/discussions/${route.params.id}/replies`,
       {
-        content: content.value
+        content: content.value.trim()
       }
     )
 
     content.value = ''
+    success('回复成功')
     await load()
+  } catch (e: any) {
+    toastError(e?.message || '回复失败')
   } finally {
     submitting.value = false
   }
@@ -73,8 +82,8 @@ onMounted(load)
         </div>
       </header>
 
-      <div class="p-6 whitespace-pre-wrap leading-7 text-zinc-200">
-        {{ discussion.content }}
+      <div class="p-6 text-zinc-200">
+        <MarkdownContent :content="discussion.content" />
       </div>
     </article>
 
@@ -101,8 +110,8 @@ onMounted(load)
             </span>
           </header>
 
-          <div class="p-4 whitespace-pre-wrap text-zinc-300">
-            {{ reply.content }}
+          <div class="p-4 text-zinc-300">
+            <MarkdownContent :content="reply.content" />
           </div>
         </article>
       </div>
@@ -112,9 +121,9 @@ onMounted(load)
     <div class="mt-6 border border-zinc-700 rounded-lg p-4">
       <textarea
         v-model="content"
-        rows="5"
+        rows="8"
         maxlength="10000"
-        placeholder="写下你的回复..."
+        placeholder="写下你的回复，支持 Markdown 和 LaTeX，例如 $x^2$..."
         class="w-full rounded-md border border-zinc-700 bg-zinc-900 p-3 text-zinc-100 outline-none focus:border-zinc-500"
       />
 
