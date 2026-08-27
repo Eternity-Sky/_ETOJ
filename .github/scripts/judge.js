@@ -263,9 +263,8 @@ async function main() {
       } else if (language === 'csharp') {
         try {
           const csproj = path.join(workdir, 'Main.csproj');
-          const srcFileName = path.basename(srcPath);
 
-          // Create a simple csproj file that includes the source file
+          // Create a simple csproj file - .NET SDK will auto-discover .cs files
           fs.writeFileSync(
             csproj,
             `<Project Sdk="Microsoft.NET.Sdk">
@@ -275,9 +274,6 @@ async function main() {
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="${srcFileName}" />
-  </ItemGroup>
 </Project>`
           );
 
