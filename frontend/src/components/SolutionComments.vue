@@ -45,7 +45,13 @@
       >
         <div class="flex items-center justify-between mb-2">
           <div class="flex items-center gap-2">
-            <span class="font-medium text-sm">{{ comment.username }}</span>
+            <UserLink
+              v-if="comment.user_id"
+              :user-id="comment.user_id"
+              :username="comment.username"
+              :avatar-url="comment.avatar_url"
+            />
+            <span v-else class="font-medium text-sm">{{ comment.username }}</span>
             <span class="text-xs text-zinc-500">{{ new Date(comment.created_at).toLocaleString() }}</span>
           </div>
           <div class="flex gap-2">
@@ -77,7 +83,13 @@
           >
             <div class="flex items-center justify-between mb-2">
               <div class="flex items-center gap-2">
-                <span class="font-medium text-sm">{{ reply.username }}</span>
+                <UserLink
+                  v-if="reply.user_id"
+                  :user-id="reply.user_id"
+                  :username="reply.username"
+                  :avatar-url="reply.avatar_url"
+                />
+                <span v-else class="font-medium text-sm">{{ reply.username }}</span>
                 <span class="text-xs text-zinc-500">{{ new Date(reply.created_at).toLocaleString() }}</span>
               </div>
               <button 
@@ -102,6 +114,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { api } from '@/lib/api'
 import MarkdownRenderer from './MarkdownRenderer.vue'
+import UserLink from './UserLink.vue'
 
 const props = defineProps<{
   solutionId: number

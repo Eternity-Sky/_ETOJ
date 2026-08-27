@@ -2,6 +2,7 @@
 import { ref, onMounted } from "vue"
 import { RouterLink } from "vue-router"
 import { api } from "@/lib/api"
+import UserLink from "@/components/UserLink.vue"
 
 const discussions = ref<any[]>([])
 const loading = ref(true)
@@ -81,7 +82,11 @@ onMounted(load)
             </div>
 
             <div class="mt-2 text-sm text-zinc-500">
-              {{ item.username }}
+              <UserLink
+                :user-id="item.user_id"
+                :username="item.username"
+                :avatar-url="item.avatar_url"
+              />
               · {{ item.reply_count }} 回复
               · {{ item.views }} 浏览
             </div>

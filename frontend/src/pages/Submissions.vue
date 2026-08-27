@@ -10,6 +10,7 @@ import {
   DIFFICULTY_LABEL,
 } from "@/lib/api";
 import { useToast } from '@/lib/toast'
+import UserLink from "@/components/UserLink.vue";
 
 const { success, error: toastError } = useToast()
 
@@ -183,7 +184,13 @@ onMounted(() => {
               >
             </td>
             <td class="px-4 py-3">
-              <span class="font-medium">{{ s.username || '未知' }}</span>
+              <UserLink
+                v-if="s.user_id"
+                :user-id="s.user_id"
+                :username="s.username || '未知'"
+                :avatar-url="s.avatar_url"
+              />
+              <span v-else class="font-medium">{{ s.username || '未知' }}</span>
             </td>
             <td class="px-4 py-3">
               <RouterLink

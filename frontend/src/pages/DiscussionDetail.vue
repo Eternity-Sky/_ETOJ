@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { api } from '@/lib/api'
 import MarkdownContent from '@/components/MarkdownContent.vue'
+import UserLink from '@/components/UserLink.vue'
 import { useToast } from '@/lib/toast'
 
 const route = useRoute()
@@ -76,7 +77,11 @@ onMounted(load)
         </h1>
 
         <div class="mt-3 text-sm text-zinc-500">
-          {{ discussion.username }}
+          <UserLink
+            :user-id="discussion.user_id"
+            :username="discussion.username"
+            :avatar-url="discussion.avatar_url"
+          />
           · {{ discussion.created_at }}
           · {{ discussion.views }} 浏览
         </div>
@@ -100,9 +105,11 @@ onMounted(load)
           class="border border-zinc-700 rounded-lg overflow-hidden"
         >
           <header class="bg-zinc-800 px-4 py-3 flex justify-between">
-            <span class="font-medium">
-              {{ reply.username }}
-            </span>
+            <UserLink
+              :user-id="reply.user_id"
+              :username="reply.username"
+              :avatar-url="reply.avatar_url"
+            />
 
             <span class="text-sm text-zinc-500">
               #{{ index + 1 }}

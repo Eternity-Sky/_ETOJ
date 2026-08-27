@@ -3,6 +3,7 @@ import { RouterLink } from 'vue-router'
 import { ref, onMounted, computed } from 'vue'
 import { api, type Submission, STATUS_COLOR, STATUS_LABEL, LANGUAGES, TEST_CASE_STATUS } from '@/lib/api'
 import { useToast } from '@/lib/toast'
+import UserLink from "@/components/UserLink.vue";
 
 const { success, error: toastError } = useToast()
 
@@ -227,6 +228,18 @@ onMounted(() => {
         <RouterLink :to="`/problem/${sub.problem_id}`" class="link font-medium mt-0.5 block truncate">
           {{ sub.problem_title }}
         </RouterLink>
+      </div>
+      <div class="card p-3">
+        <div class="text-zinc-400 text-xs">提交者</div>
+        <div class="mt-0.5">
+          <UserLink
+            v-if="sub.user_id"
+            :user-id="sub.user_id"
+            :username="sub.username || '未知'"
+            :avatar-url="sub.avatar_url"
+          />
+          <span v-else class="font-medium">{{ sub.username || '未知' }}</span>
+        </div>
       </div>
       <div class="card p-3"><div class="text-zinc-400 text-xs">语言</div><div class="font-medium mt-0.5 uppercase">{{ langLabel }}</div></div>
       <div class="card p-3"><div class="text-zinc-400 text-xs">运行时间</div><div class="font-medium mt-0.5">{{ sub.run_time_ms ?? '-' }} ms</div></div>

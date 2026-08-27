@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { api, type User } from "@/lib/api";
+import UserLink from "@/components/UserLink.vue";
 
 const users = ref<User[]>([]);
 
@@ -45,11 +46,11 @@ onMounted(async () => {
             </td>
             <td class="px-4 py-3">
               <div class="flex items-center gap-2">
-                <span
-                  class="h-7 w-7 inline-flex items-center justify-center rounded-full bg-brand-100 text-brand-700 text-xs font-bold"
-                  >{{ u.username[0].toUpperCase() }}</span
-                >
-                <span class="font-medium">{{ u.username }}</span>
+                <UserLink
+                  :user-id="u.id"
+                  :username="u.username"
+                  :avatar-url="u.avatar_url"
+                />
                 <span
                   v-if="u.role === 'admin'"
                   class="tag bg-purple-100 text-purple-700"

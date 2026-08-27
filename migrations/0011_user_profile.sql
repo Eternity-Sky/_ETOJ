@@ -1,0 +1,5 @@
+ALTER TABLE users ADD COLUMN bio TEXT DEFAULT '';
+ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT '';
+
+CREATE INDEX IF NOT EXISTS idx_users_id
+ON users(id);

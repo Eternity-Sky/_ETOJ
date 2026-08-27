@@ -3,6 +3,7 @@ import { RouterLink } from "vue-router";
 import { ref, onMounted, computed } from "vue";
 import { api, type User, STATUS_COLOR, STATUS_LABEL } from "@/lib/api";
 import { useToast } from "@/lib/toast";
+import UserLink from "@/components/UserLink.vue";
 
 const { success, error: toastError } = useToast();
 
@@ -10,6 +11,10 @@ const user = ref<User | null>(null);
 const recent = ref<any[]>([]);
 const showEmailDialog = ref(false);
 const newEmail = ref("");
+const showProfileDialog = ref(false);
+const avatarUrl = ref("");
+const bio = ref("");
+const savingProfile = ref(false);
 
 async function load() {
   user.value = await api.get("/api/auth/me");
@@ -39,6 +44,33 @@ function openEmailDialog() {
   showEmailDialog.value = true;
 }
 
+function openProfileDialog() {
+  avatarUrl.value = user.value?.avatar_url || "";
+  bio.value = user.value?.bio || "";
+  showProfileDialog.value = true;
+}
+
+async function updateProfile() {
+  savingProfile.value = true;
+
+  try {
+    await api.put("/api/auth/profile", {
+      avatar_url: avatarUrl.value.trim(),
+      bio: bio.value.trim()
+    });
+
+    success("个人资料更新成功");
+
+    showProfileDialog.value = false;
+
+    await load();
+  } catch (e: any) {
+    toastError(e.message || "个人资料更新失败");
+  } finally {
+    savingProfile.value = false;
+  }
+}
+
 const solveRate = computed(() => {
   if (!user.value) return 0;
   if (!user.value.submissions_count || user.value.submissions_count === 0) return 0;
@@ -53,10 +85,17 @@ onMounted(load);
   <div class="space-y-6">
     <div v-if="user" class="card p-6 sm:p-8">
       <div class="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-        <div
-          class="h-16 w-16 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white text-2xl font-bold shadow-lg"
-        >
-          {{ user.username[0].toUpperCase() }}
+        <div class="relative">
+          <UserLink :user-id="user.id" :username="user.username" :avatar-url="user.avatar_url" />
+          <button
+            @click="openProfileDialog"
+            class="absolute -bottom-1 -right-1 bg-white border border-zinc-200 rounded-full p-1.5 shadow-sm hover:bg-zinc-50 transition-colors"
+            title="编辑个人资料"
+          >
+            <svg class="w-3 h-3 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </button>
         </div>
         <div class="flex-1">
           <div class="flex flex-wrap items-center gap-2 mb-1">
@@ -73,6 +112,9 @@ onMounted(load);
             </span>
             · 注册于
             {{ new Date(user.created_at!).toLocaleDateString() }}
+          </div>
+          <div v-if="user.bio" class="text-sm text-zinc-600 mt-1">
+            {{ user.bio }}
           </div>
         </div>
         <div class="flex gap-2">
@@ -160,9 +202,9 @@ onMounted(load);
         <div class="space-y-4">
           <div>
             <label class="block text-sm text-zinc-600 mb-1">Email Address</label>
-            <input 
-              v-model="newEmail" 
-              type="email" 
+            <input
+              v-model="newEmail"
+              type="email"
               class="w-full border border-zinc-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
               placeholder="your@email.com"
             >
@@ -171,6 +213,46 @@ onMounted(load);
         <div class="flex justify-end gap-3 mt-6">
           <button @click="showEmailDialog = false" class="border border-zinc-300 hover:border-zinc-400 text-zinc-700 px-4 py-2 rounded-md text-sm transition-colors">Cancel</button>
           <button @click="updateEmail" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm transition-colors">Update</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Edit Dialog -->
+    <div v-if="showProfileDialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-full max-w-md border border-zinc-200">
+        <h3 class="text-lg font-semibold mb-4">编辑个人资料</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm text-zinc-600 mb-1">头像 URL</label>
+            <input
+              v-model="avatarUrl"
+              type="text"
+              class="w-full border border-zinc-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              placeholder="https://example.com/avatar.png"
+            >
+            <p class="text-xs text-zinc-500 mt-1">留空则使用首字母头像</p>
+          </div>
+          <div>
+            <label class="block text-sm text-zinc-600 mb-1">个人简介</label>
+            <textarea
+              v-model="bio"
+              rows="3"
+              maxlength="500"
+              class="w-full border border-zinc-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 resize-none"
+              placeholder="介绍一下自己..."
+            ></textarea>
+            <p class="text-xs text-zinc-500 mt-1">{{ bio.length }}/500</p>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+          <button @click="showProfileDialog = false" class="border border-zinc-300 hover:border-zinc-400 text-zinc-700 px-4 py-2 rounded-md text-sm transition-colors">取消</button>
+          <button
+            @click="updateProfile"
+            :disabled="savingProfile"
+            class="bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-400 text-white px-4 py-2 rounded-md text-sm transition-colors"
+          >
+            {{ savingProfile ? '保存中...' : '保存' }}
+          </button>
         </div>
       </div>
     </div>

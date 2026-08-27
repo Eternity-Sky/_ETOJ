@@ -8,6 +8,7 @@ import CodeEditor from '@/components/CodeEditor.vue'
 import Captcha from '@/components/Captcha.vue'
 import SolutionEditor from '@/components/SolutionEditor.vue'
 import SolutionComments from '@/components/SolutionComments.vue'
+import UserLink from '@/components/UserLink.vue'
 
 const { success, error: toastError, info } = useToast()
 
@@ -313,8 +314,16 @@ onMounted(load)
             <div class="flex items-center justify-between mb-4">
               <div>
                 <h3 class="text-lg font-semibold">{{ solution.title }}</h3>
-                <p class="text-sm text-zinc-400 mt-1">
-                  By {{ solution.username }} · {{ new Date(solution.created_at).toLocaleDateString() }}
+                <p class="text-sm text-zinc-400 mt-1 flex items-center gap-2">
+                  By
+                  <UserLink
+                    v-if="solution.user_id"
+                    :user-id="solution.user_id"
+                    :username="solution.username"
+                    :avatar-url="solution.avatar_url"
+                  />
+                  <span v-else>{{ solution.username }}</span>
+                  · {{ new Date(solution.created_at).toLocaleDateString() }}
                 </p>
               </div>
               <div class="flex gap-2">

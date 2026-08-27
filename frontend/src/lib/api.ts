@@ -80,6 +80,19 @@ export type User = {
   solved_count: number;
   submissions_count: number;
   created_at?: string;
+  bio?: string;
+  avatar_url?: string;
+};
+
+export type PublicUser = {
+  id: number;
+  username: string;
+  role: string;
+  solved_count: number;
+  submissions_count: number;
+  created_at?: string;
+  bio?: string;
+  avatar_url?: string;
 };
 
 export type Problem = {
@@ -103,6 +116,7 @@ export type Submission = {
   id: number;
   user_id?: number;
   username?: string;
+  avatar_url?: string;
   problem_id: number;
   problem_title?: string;
   problem_slug?: string;

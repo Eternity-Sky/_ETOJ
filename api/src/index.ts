@@ -247,11 +247,24 @@ app.post("/api/auth/login", async (c) => {
 
 app.get("/api/auth/me", authMiddleware, async (c) => {
   const userId = c.get("userId");
-  const user = await c.env.DB.prepare(
-    "SELECT id, username, email, role, solved_count, submissions_count, created_at FROM users WHERE id = ?",
-  )
+
+  const user = await c.env.DB.prepare(`
+    SELECT
+      id,
+      username,
+      email,
+      role,
+      solved_count,
+      submissions_count,
+      created_at,
+      bio,
+      avatar_url
+    FROM users
+    WHERE id = ?
+  `)
     .bind(userId)
     .first();
+
   return c.json(user);
 });
 
@@ -290,6 +303,98 @@ app.put("/api/auth/email", authMiddleware, async (c) => {
   }
 });
 
+// 获取公开用户资料
+app.get("/api/users/:id", async (c) => {
+  try {
+    const id = Number(c.req.param("id"));
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return c.json({ error: "Invalid user id" }, 400);
+    }
+
+    const user = await c.env.DB.prepare(`
+      SELECT
+        id,
+        username,
+        role,
+        solved_count,
+        submissions_count,
+        created_at,
+        bio,
+        avatar_url
+      FROM users
+      WHERE id = ?
+    `)
+      .bind(id)
+      .first();
+
+    if (!user) {
+      return c.json({ error: "用户不存在" }, 404);
+    }
+
+    return c.json(user);
+  } catch (e: any) {
+    return c.json({
+      error: e.message || "获取用户资料失败"
+    }, 500);
+  }
+});
+
+// 更新个人资料
+app.put("/api/auth/profile", authMiddleware, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const body = await c.req.json();
+
+    const bio = String(body.bio || "").trim();
+    const avatarUrl = String(body.avatar_url || "").trim();
+
+    if (bio.length > 500) {
+      return c.json({
+        error: "个人简介不能超过500个字符"
+      }, 400);
+    }
+
+    if (avatarUrl.length > 1000) {
+      return c.json({
+        error: "头像地址过长"
+      }, 400);
+    }
+
+    if (avatarUrl) {
+      try {
+        const url = new URL(avatarUrl);
+
+        if (url.protocol !== "http:" && url.protocol !== "https:") {
+          return c.json({
+            error: "头像地址必须使用 HTTP 或 HTTPS"
+          }, 400);
+        }
+      } catch {
+        return c.json({
+          error: "头像地址格式不正确"
+        }, 400);
+      }
+    }
+
+    await c.env.DB.prepare(`
+      UPDATE users
+      SET bio = ?, avatar_url = ?
+      WHERE id = ?
+    `)
+      .bind(bio, avatarUrl, userId)
+      .run();
+
+    return c.json({
+      message: "个人资料更新成功"
+    });
+  } catch (e: any) {
+    return c.json({
+      error: e.message || "更新个人资料失败"
+    }, 500);
+  }
+});
+
 // ==================== Discussions ====================
 
 // 获取讨论区帖子列表
@@ -313,7 +418,8 @@ app.get("/api/discussions", async (c) => {
       d.created_at,
       d.updated_at,
       u.id AS user_id,
-      u.username
+      u.username,
+      u.avatar_url
     FROM discussions d
     JOIN users u ON u.id = d.user_id
     ORDER BY d.is_pinned DESC, d.updated_at DESC, d.id DESC
@@ -351,7 +457,8 @@ app.get("/api/discussions/:id", async (c) => {
       d.created_at,
       d.updated_at,
       u.id AS user_id,
-      u.username
+      u.username,
+      u.avatar_url
     FROM discussions d
     JOIN users u ON u.id = d.user_id
     WHERE d.id = ?
@@ -377,7 +484,8 @@ app.get("/api/discussions/:id", async (c) => {
       r.content,
       r.created_at,
       u.id AS user_id,
-      u.username
+      u.username,
+      u.avatar_url
     FROM discussion_replies r
     JOIN users u ON u.id = r.user_id
     WHERE r.discussion_id = ?
@@ -689,7 +797,7 @@ app.get("/api/submissions", authMiddleware, async (c) => {
   }
 
   const items = await c.env.DB.prepare(
-    `SELECT s.id, s.user_id, s.problem_id, s.language, s.status, s.result_json, s.run_time_ms, s.memory_kb, s.github_run_id, s.judge_latency_ms, s.created_at, p.title as problem_title, p.slug as problem_slug, u.username as username FROM submissions s LEFT JOIN problems p ON s.problem_id = p.id LEFT JOIN users u ON s.user_id = u.id ${where} ORDER BY s.id DESC LIMIT ? OFFSET ?`,
+    `SELECT s.id, s.user_id, s.problem_id, s.language, s.status, s.result_json, s.run_time_ms, s.memory_kb, s.github_run_id, s.judge_latency_ms, s.created_at, p.title as problem_title, p.slug as problem_slug, u.id as user_id, u.username as username, u.avatar_url FROM submissions s LEFT JOIN problems p ON s.problem_id = p.id LEFT JOIN users u ON s.user_id = u.id ${where} ORDER BY s.id DESC LIMIT ? OFFSET ?`,
   )
     .bind(...params, pageSize, offset)
     .all();
@@ -801,7 +909,7 @@ app.get("/api/submissions/:id", authMiddleware, async (c) => {
   const id = Number(c.req.param("id"));
   const userId = c.get("userId");
   const sub: any = await c.env.DB.prepare(
-    `SELECT s.*, p.title as problem_title, p.slug as problem_slug, p.description, p.sample_input, p.sample_output FROM submissions s LEFT JOIN problems p ON s.problem_id = p.id WHERE s.id = ?`,
+    `SELECT s.*, u.id as user_id, u.username, u.avatar_url, p.title as problem_title, p.slug as problem_slug, p.description, p.sample_input, p.sample_output FROM submissions s LEFT JOIN users u ON s.user_id = u.id LEFT JOIN problems p ON s.problem_id = p.id WHERE s.id = ?`,
   )
     .bind(id)
     .first();
@@ -1352,7 +1460,7 @@ app.get("/api/problems/:id/testcases", async (c) => {
 
 app.get("/api/rankings", async (c) => {
   const users = await c.env.DB.prepare(
-    `SELECT id, username, solved_count, submissions_count, created_at FROM users ORDER BY solved_count DESC, submissions_count ASC LIMIT 100`,
+    `SELECT id, username, role, solved_count, submissions_count, created_at, avatar_url FROM users ORDER BY solved_count DESC, submissions_count ASC LIMIT 100`,
   ).all();
   return c.json(users.results);
 });

@@ -12,6 +12,7 @@ import Admin from './pages/Admin.vue'
 import Discussions from './pages/Discussions.vue'
 import DiscussionNew from './pages/DiscussionNew.vue'
 import DiscussionDetail from './pages/DiscussionDetail.vue'
+import UserProfile from './pages/UserProfile.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -29,6 +30,7 @@ const router = createRouter({
     { path: '/discussions', component: Discussions },
     { path: '/discussions/new', component: DiscussionNew },
     { path: '/discussion/:id', component: DiscussionDetail, props: true },
+    { path: '/users/:uid', component: UserProfile, props: true },
   ],
   scrollBehavior: () => ({ top: 0 })
 })
