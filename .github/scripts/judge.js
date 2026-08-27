@@ -131,8 +131,8 @@ async function main() {
         }
       } else if (language === 'pypy3') {
         runCmd = ['pypy3', srcPath];
-      } else if (language.startsWith('java')) {
-        const javaVersion = language.replace('java', '');
+      } else if (language === 'java8' || language === 'java11' || language === 'java17' || language === 'java21') {
+        const javaVersion = language.slice(4);
 
         const javaHomes = {
           '8': '/usr/lib/jvm/java-8-openjdk-amd64',
