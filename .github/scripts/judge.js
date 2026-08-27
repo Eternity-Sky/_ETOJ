@@ -52,6 +52,7 @@ async function main() {
     cpp17: 'cpp',
     cpp20: 'cpp',
     cpp23: 'cpp',
+    python: 'py',
     php: 'php'
   };
   const ext = extMap[language] || 'cpp';
@@ -89,10 +90,12 @@ async function main() {
       } else if (language === 'cpp23') {
         execFileSync('g++', ['-O2', '-std=c++23', '-o', 'solution', 'solution.cpp'], { cwd: workdir, timeout: 15000, stdio: 'pipe' });
         runCmd = [path.join(workdir, 'solution')];
+      } else if (language === 'python') {
+        runCmd = ['python3', srcPath];
       } else if (language === 'php') {
         runCmd = ['php', srcPath];
       } else {
-        compileStatus = { status: 'compile_error', msg: `Unsupported language: ${language}. Only C, C++ versions, and PHP are supported.` };
+        compileStatus = { status: 'compile_error', msg: `Unsupported language: ${language}. Supported languages: C, C++, Python 3, PHP.` };
       }
     } catch (e) {
       let errorMsg = e.message || 'Unknown compilation error';
