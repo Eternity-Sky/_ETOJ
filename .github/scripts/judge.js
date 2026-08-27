@@ -56,10 +56,12 @@ async function main() {
     pypy3: 'py',
     java8: 'java',
     java11: 'java',
+    java17: 'java',
+    java21: 'java',
     php: 'php'
   };
   const ext = extMap[language] || 'cpp';
-  const srcName = (language === 'java8' || language === 'java11') ? 'Main.java' : `solution.${ext}`;
+  const srcName = language.startsWith('java') ? 'Main.java' : `solution.${ext}`;
   const srcPath = path.join(workdir, srcName);
   fs.writeFileSync(srcPath, code);
 
@@ -110,57 +112,56 @@ async function main() {
         }
       } else if (language === 'pypy3') {
         runCmd = ['pypy3', srcPath];
-      } else if (language === 'java8') {
-        try {
-          execFileSync('javac', ['-encoding', 'UTF-8', srcPath], {
-            cwd: workdir,
-            timeout: 10000,
-            stdio: 'pipe'
-          });
+      } else if (language.startsWith('java')) {
+        const javaVersion = language.replace('java', '');
 
-          runCmd = ['java', '-cp', workdir, 'Main'];
+        const javaHomes = {
+          '8': '/usr/lib/jvm/java-8-openjdk-amd64',
+          '11': '/usr/lib/jvm/java-11-openjdk-amd64',
+          '17': '/usr/lib/jvm/java-17-openjdk-amd64',
+          '21': '/usr/lib/jvm/java-21-openjdk-amd64'
+        };
 
-        } catch (e) {
-          let errorMsg = e.message || 'Java compilation error';
+        const javaHome = javaHomes[javaVersion];
 
-          if (e.stderr) {
-            errorMsg = e.stderr.toString();
-          } else if (e.stdout) {
-            errorMsg = e.stdout.toString();
-          }
-
-          console.error('Java 编译错误:', errorMsg);
-
+        if (!javaHome) {
           compileStatus = {
             status: 'compile_error',
-            msg: errorMsg
+            msg: `Unsupported Java version: ${javaVersion}`
           };
-        }
-      } else if (language === 'java11') {
-        try {
-          execFileSync('javac', ['-encoding', 'UTF-8', '--release', '11', srcPath], {
-            cwd: workdir,
-            timeout: 10000,
-            stdio: 'pipe'
-          });
+        } else {
+          const javac = `${javaHome}/bin/javac`;
+          const java = `${javaHome}/bin/java`;
 
-          runCmd = ['java', '-cp', workdir, 'Main'];
+          try {
+            execFileSync(
+              javac,
+              ['-encoding', 'UTF-8', '--release', javaVersion, srcPath],
+              {
+                cwd: workdir,
+                timeout: 10000,
+                stdio: 'pipe'
+              }
+            );
 
-        } catch (e) {
-          let errorMsg = e.message || 'Java 11 compilation error';
+            runCmd = [java, '-cp', workdir, 'Main'];
 
-          if (e.stderr) {
-            errorMsg = e.stderr.toString();
-          } else if (e.stdout) {
-            errorMsg = e.stdout.toString();
+          } catch (e) {
+            let errorMsg = e.message || 'Java compilation error';
+
+            if (e.stderr) {
+              errorMsg = e.stderr.toString();
+            } else if (e.stdout) {
+              errorMsg = e.stdout.toString();
+            }
+
+            console.error('Java 编译错误:', errorMsg);
+
+            compileStatus = {
+              status: 'compile_error',
+              msg: errorMsg
+            };
           }
-
-          console.error('Java 11 编译错误:', errorMsg);
-
-          compileStatus = {
-            status: 'compile_error',
-            msg: errorMsg
-          };
         }
       } else if (language === 'php') {
         runCmd = ['php', srcPath];

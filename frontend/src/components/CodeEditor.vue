@@ -28,6 +28,8 @@ const languageExtensions: Record<string, any> = {
   pypy3: python(),
   java8: java(),
   java11: java(),
+  java17: java(),
+  java21: java(),
   // 可以添加更多语言支持
 }
 

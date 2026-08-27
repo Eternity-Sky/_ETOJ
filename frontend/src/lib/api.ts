@@ -216,5 +216,7 @@ export const LANGUAGES = [
   { value: "pypy3", label: "PyPy 3", ext: "py" },
   { value: "java8", label: "Java 8", ext: "java" },
   { value: "java11", label: "Java 11", ext: "java" },
+  { value: "java17", label: "Java 17", ext: "java" },
+  { value: "java21", label: "Java 21", ext: "java" },
   { value: "php", label: "PHP", ext: "php" },
 ];

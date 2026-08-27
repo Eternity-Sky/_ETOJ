@@ -41,6 +41,12 @@ const templates: Record<string, string> = {
 
   java11: `import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    public static void main(String[] args) throws Exception {
         \n    }\n}\n`,
+
+  java17: `import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    public static void main(String[] args) throws Exception {
+        \n    }\n}\n`,
+
+  java21: `import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    public static void main(String[] args) throws Exception {
+        \n    }\n}\n`,
 }
 
 const acceptRate = computed(() => {
