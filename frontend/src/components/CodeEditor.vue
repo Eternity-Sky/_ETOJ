@@ -23,7 +23,8 @@ let view: EditorView | null = null
 const languageExtensions: Record<string, any> = {
   javascript: javascript(),
   cpp: cpp(),
-  python: python(),
+  python3: python(),
+  pypy3: python(),
   // 可以添加更多语言支持
 }
 

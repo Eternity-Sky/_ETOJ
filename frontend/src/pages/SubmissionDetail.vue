@@ -38,12 +38,25 @@ const parsedResult = computed(() => {
 
 function getTestCaseStatus(c: any): string {
   if (c.passed) return 'AC'
+
   if (c.reason === 'TLE') return 'TLE'
   if (c.reason === 'MLE') return 'MLE'
   if (c.reason === 'OLE') return 'OLE'
   if (c.reason === 'RE') return 'RE'
   if (c.reason === 'CE') return 'CE'
+
+  // judge.js 的运行时错误会把具体错误信息放在 reason 中，
+  // 例如 "exit -11"、"Segmentation fault"。
+  // 只要测试点失败且提交总状态是 RE，就显示 RE。
+  if (
+    sub.value?.status === 'runtime_error' &&
+    !c.passed
+  ) {
+    return 'RE'
+  }
+
   if (c.status) return c.status.toUpperCase()
+
   return 'WA'
 }
 

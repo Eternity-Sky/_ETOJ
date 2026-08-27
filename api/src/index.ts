@@ -836,7 +836,7 @@ app.post("/api/submissions", authMiddleware, async (c) => {
       return c.json({ error: "Missing fields" }, 400);
     
     // 验证语言支持
-    const supportedLanguages = ['c', 'cpp98', 'cpp11', 'cpp14', 'cpp17', 'cpp20', 'cpp23', 'python', 'php'];
+    const supportedLanguages = ['c', 'cpp98', 'cpp11', 'cpp14', 'cpp17', 'cpp20', 'cpp23', 'python3', 'pypy3', 'php'];
     if (!supportedLanguages.includes(language)) {
       return c.json({ error: `Unsupported language: ${language}. Supported languages: ${supportedLanguages.join(', ')}` }, 400);
     }
@@ -934,7 +934,7 @@ app.get("/api/submissions", authMiddleware, async (c) => {
   }
 
   const items = await c.env.DB.prepare(
-    `SELECT s.id, s.user_id, s.problem_id, s.language, s.status, s.result_json, s.run_time_ms, s.memory_kb, s.github_run_id, s.judge_latency_ms, s.created_at, p.title as problem_title, p.slug as problem_slug, u.id as user_id, u.username as username, u.avatar_url FROM submissions s LEFT JOIN problems p ON s.problem_id = p.id LEFT JOIN users u ON s.user_id = u.id ${where} ORDER BY s.id DESC LIMIT ? OFFSET ?`,
+    `SELECT s.id, s.user_id, s.problem_id, s.language, s.status, s.result_json, s.run_time_ms, s.memory_kb, s.github_run_id, s.created_at, p.title as problem_title, p.slug as problem_slug, u.id as user_id, u.username as username, u.avatar_url FROM submissions s LEFT JOIN problems p ON s.problem_id = p.id LEFT JOIN users u ON s.user_id = u.id ${where} ORDER BY s.id DESC LIMIT ? OFFSET ?`,
   )
     .bind(...params, pageSize, offset)
     .all();
@@ -948,9 +948,9 @@ app.get("/api/submissions", authMiddleware, async (c) => {
 
 async function applyJudgeResult(db: D1Database, data: any) {
   await db.prepare(
-    `UPDATE submissions SET status = ?, result_json = ?, run_time_ms = ?, memory_kb = ?, github_run_id = ?, judge_latency_ms = ? WHERE id = ?`,
+    `UPDATE submissions SET status = ?, result_json = ?, run_time_ms = ?, memory_kb = ?, github_run_id = ? WHERE id = ?`,
   )
-    .bind(data.status, data.resultJson, data.runTimeMs, data.memoryKb, data.githubRunId || null, data.judgeLatencyMs || null, data.submissionId)
+    .bind(data.status, data.resultJson, data.runTimeMs, data.memoryKb, data.githubRunId || null, data.submissionId)
     .run();
   
   if (data.accepted) {

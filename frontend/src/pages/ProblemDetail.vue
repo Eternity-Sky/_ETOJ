@@ -33,7 +33,9 @@ const currentUserId = ref<number | null>(null)
 const templates: Record<string, string> = {
   cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}\n`,
 
-  python: `a, b = map(int, input().split())\nprint(a + b)\n`,
+  python3: `a, b = map(int, input().split())\nprint(a + b)\n`,
+
+  pypy3: `a, b = map(int, input().split())\nprint(a + b)\n`,
 }
 
 const acceptRate = computed(() => {

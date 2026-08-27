@@ -52,7 +52,8 @@ async function main() {
     cpp17: 'cpp',
     cpp20: 'cpp',
     cpp23: 'cpp',
-    python: 'py',
+    python3: 'py',
+    pypy3: 'py',
     php: 'php'
   };
   const ext = extMap[language] || 'cpp';
@@ -90,8 +91,8 @@ async function main() {
       } else if (language === 'cpp23') {
         execFileSync('g++', ['-O2', '-std=c++23', '-o', 'solution', 'solution.cpp'], { cwd: workdir, timeout: 15000, stdio: 'pipe' });
         runCmd = [path.join(workdir, 'solution')];
-      } else if (language === 'python') {
-        // Python 语法检查
+      } else if (language === 'python3') {
+        // Python 3 语法检查
         try {
           execFileSync('python3', ['-m', 'py_compile', srcPath], { cwd: workdir, timeout: 10000, stdio: 'pipe' });
           runCmd = ['python3', srcPath];
@@ -105,10 +106,12 @@ async function main() {
           console.error('Python 语法错误:', errorMsg);
           compileStatus = { status: 'compile_error', msg: errorMsg };
         }
+      } else if (language === 'pypy3') {
+        runCmd = ['pypy3', srcPath];
       } else if (language === 'php') {
         runCmd = ['php', srcPath];
       } else {
-        compileStatus = { status: 'compile_error', msg: `Unsupported language: ${language}. Supported languages: C, C++, Python 3, PHP.` };
+        compileStatus = { status: 'compile_error', msg: `Unsupported language: ${language}.` };
       }
     } catch (e) {
       let errorMsg = e.message || 'Unknown compilation error';
