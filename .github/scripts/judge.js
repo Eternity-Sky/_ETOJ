@@ -397,7 +397,7 @@ async function main() {
       } else if (language === 'php') {
         runCmd = ['php', srcPath];
       } else {
-        compileStatus = { status: 'compile_error', msg: `Unsupported language: ${language}.` };
+        compileStatus = { status: 'unknown_language', msg: `Unsupported language: ${language}.` };
       }
     } catch (e) {
       let errorMsg = e.message || 'Unknown compilation error';
@@ -471,9 +471,9 @@ async function main() {
 
   await compile();
   if (compileStatus) {
-    console.error('编译错误:', compileStatus.msg);
+    console.error('Compilation/Language error:', compileStatus.msg);
     emit({
-      status: 'compile_error',
+      status: compileStatus.status,
       runTimeMs: 0, memoryKb: 0,
       details: { passed: false, error: compileStatus.msg, details: [] }
     });
@@ -497,14 +497,14 @@ async function main() {
   }
 
   for (let i = 0; i < actualTestCases.length; i++) {
-    // Check for compile error before running any test case
-    if (compileStatus?.status === 'compile_error') {
+    // Check for compile error or unknown language before running any test case
+    if (compileStatus?.status === 'compile_error' || compileStatus?.status === 'unknown_language') {
       results.push({
         index: i,
         passed: false,
         timeMs: 0,
         memoryKb: 0,
-        reason: 'CE',
+        reason: compileStatus.status === 'compile_error' ? 'CE' : 'UL',
         message: compileStatus.msg
       });
       continue;
@@ -549,6 +549,8 @@ async function main() {
   let finalStatus;
   if (compileStatus?.status === 'compile_error') {
     finalStatus = 'compile_error';
+  } else if (compileStatus?.status === 'unknown_language') {
+    finalStatus = 'unknown_language';
   } else if (failedReason) {
     finalStatus = failedReason;
   } else if (allPass) {

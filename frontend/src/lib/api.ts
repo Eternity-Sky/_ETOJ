@@ -144,7 +144,9 @@ export type SubmissionStatus =
   | "memory_limit_exceeded"
   | "runtime_error"
   | "compile_error"
-  | "system_error";
+  | "system_error"
+  | "judge_error"
+  | "unknown_language";
 
 export type Notification = {
   id: number;
@@ -166,6 +168,8 @@ export const STATUS_LABEL: Record<SubmissionStatus, string> = {
   runtime_error: "Runtime Error",
   compile_error: "Compile Error",
   system_error: "System Error",
+  judge_error: "Judge Error",
+  unknown_language: "Unknown Language",
 };
 
 export const STATUS_SHORT: Record<SubmissionStatus, string> = {
@@ -178,6 +182,8 @@ export const STATUS_SHORT: Record<SubmissionStatus, string> = {
   runtime_error: "RE",
   compile_error: "CE",
   system_error: "SE",
+  judge_error: "JE",
+  unknown_language: "UL",
 };
 
 export const STATUS_COLOR: Record<SubmissionStatus, string> = {
@@ -190,6 +196,8 @@ export const STATUS_COLOR: Record<SubmissionStatus, string> = {
   runtime_error: "bg-fuchsia-900 text-fuchsia-300",
   compile_error: "bg-red-900 text-red-300",
   system_error: "bg-gray-800 text-zinc-300",
+  judge_error: "bg-purple-900 text-purple-300",
+  unknown_language: "bg-yellow-900 text-yellow-300",
 };
 
 export const TEST_CASE_STATUS: Record<string, { label: string; color: string }> = {
