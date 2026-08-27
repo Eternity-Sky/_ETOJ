@@ -86,7 +86,17 @@ onMounted(load);
     <div v-if="user" class="card p-6 sm:p-8">
       <div class="flex flex-col sm:flex-row items-start sm:items-center gap-5">
         <div class="relative">
-          <UserLink :user-id="user.id" :username="user.username" :avatar-url="user.avatar_url" />
+          <div class="h-16 w-16 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+            <img
+              v-if="user.avatar_url"
+              :src="user.avatar_url"
+              :alt="`${user.username} 的头像`"
+              class="h-16 w-16 rounded-2xl object-cover"
+              loading="lazy"
+              @error="($event.target as HTMLImageElement).style.display = 'none'"
+            />
+            <span v-else>{{ user.username[0].toUpperCase() }}</span>
+          </div>
           <button
             @click="openProfileDialog"
             class="absolute -bottom-1 -right-1 bg-white border border-zinc-200 rounded-full p-1.5 shadow-sm hover:bg-zinc-50 transition-colors"

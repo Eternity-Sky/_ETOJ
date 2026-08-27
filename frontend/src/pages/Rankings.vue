@@ -50,6 +50,7 @@ onMounted(async () => {
                   :user-id="u.id"
                   :username="u.username"
                   :avatar-url="u.avatar_url"
+                  size="sm"
                 />
                 <span
                   v-if="u.role === 'admin'"

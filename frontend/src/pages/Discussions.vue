@@ -81,14 +81,18 @@ onMounted(load)
               </h2>
             </div>
 
-            <div class="mt-2 text-sm text-zinc-500">
+            <div class="mt-2 flex items-center gap-3 text-sm text-zinc-500">
               <UserLink
                 :user-id="item.user_id"
                 :username="item.username"
                 :avatar-url="item.avatar_url"
+                size="sm"
               />
-              · {{ item.reply_count }} 回复
-              · {{ item.views }} 浏览
+
+              <span>
+                · {{ item.reply_count }} 回复
+                · {{ item.views }} 浏览
+              </span>
             </div>
 
           </div>

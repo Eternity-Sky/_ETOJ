@@ -4,16 +4,26 @@ import { RouterLink } from "vue-router"
 
 const props = withDefaults(
   defineProps<{
-    id: number
-    username: string
+    id?: number | string | null
+    userId?: number | string | null
+    uid?: number | string | null
+    username?: string | null
     avatarUrl?: string | null
     size?: "sm" | "md" | "lg"
   }>(),
   {
+    id: null,
+    userId: null,
+    uid: null,
+    username: "",
     avatarUrl: "",
     size: "md",
   }
 )
+
+const resolvedId = computed(() => {
+  return props.id ?? props.userId ?? props.uid ?? null
+})
 
 const avatarSize = computed(() => {
   if (props.size === "sm") return "h-6 w-6"
@@ -27,14 +37,16 @@ const textSize = computed(() => {
   return "text-sm"
 })
 
-const initial = computed(() =>
-  props.username?.trim()?.[0]?.toUpperCase() || "?"
-)
+const initial = computed(() => {
+  return props.username?.trim()?.[0]?.toUpperCase() || "?"
+})
 </script>
 
 <template>
+  <!-- 有 UID 才允许跳转 -->
   <RouterLink
-    :to="`/users/${id}`"
+    v-if="resolvedId !== null && resolvedId !== undefined"
+    :to="`/users/${resolvedId}`"
     class="inline-flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity"
   >
     <img
@@ -65,7 +77,31 @@ const initial = computed(() =>
         'font-medium truncate text-zinc-700 dark:text-zinc-200'
       ]"
     >
-      {{ username }}
+      {{ username || "未知用户" }}
     </span>
   </RouterLink>
+
+  <!-- 没有 UID 时不要生成 /undefined -->
+  <span
+    v-else
+    class="inline-flex items-center gap-2 min-w-0"
+  >
+    <span
+      :class="[
+        avatarSize,
+        'inline-flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-500 font-bold shrink-0'
+      ]"
+    >
+      {{ initial }}
+    </span>
+
+    <span
+      :class="[
+        textSize,
+        'font-medium truncate text-zinc-500'
+      ]"
+    >
+      {{ username || "未知用户" }}
+    </span>
+  </span>
 </template>

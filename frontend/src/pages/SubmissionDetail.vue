@@ -237,6 +237,7 @@ onMounted(() => {
             :user-id="sub.user_id"
             :username="sub.username || '未知'"
             :avatar-url="sub.avatar_url"
+            size="sm"
           />
           <span v-else class="font-medium">{{ sub.username || '未知' }}</span>
         </div>

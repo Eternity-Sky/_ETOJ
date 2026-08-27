@@ -238,6 +238,8 @@ app.post("/api/auth/login", async (c) => {
         role: user.role,
         solved_count: user.solved_count,
         submissions_count: user.submissions_count,
+        bio: user.bio || "",
+        avatar_url: user.avatar_url || "",
       },
     });
   } catch (e: any) {

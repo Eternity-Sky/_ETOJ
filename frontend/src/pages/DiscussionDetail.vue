@@ -76,14 +76,18 @@ onMounted(load)
           {{ discussion.title }}
         </h1>
 
-        <div class="mt-3 text-sm text-zinc-500">
+        <div class="mt-3 flex items-center gap-3 text-sm text-zinc-500">
           <UserLink
             :user-id="discussion.user_id"
             :username="discussion.username"
             :avatar-url="discussion.avatar_url"
+            size="sm"
           />
-          · {{ discussion.created_at }}
-          · {{ discussion.views }} 浏览
+
+          <span>
+            · {{ discussion.created_at }}
+            · {{ discussion.views }} 浏览
+          </span>
         </div>
       </header>
 
@@ -109,6 +113,7 @@ onMounted(load)
               :user-id="reply.user_id"
               :username="reply.username"
               :avatar-url="reply.avatar_url"
+              size="sm"
             />
 
             <span class="text-sm text-zinc-500">

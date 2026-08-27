@@ -321,6 +321,7 @@ onMounted(load)
                     :user-id="solution.user_id"
                     :username="solution.username"
                     :avatar-url="solution.avatar_url"
+                    size="sm"
                   />
                   <span v-else>{{ solution.username }}</span>
                   · {{ new Date(solution.created_at).toLocaleDateString() }}

@@ -50,6 +50,7 @@
               :user-id="comment.user_id"
               :username="comment.username"
               :avatar-url="comment.avatar_url"
+              size="sm"
             />
             <span v-else class="font-medium text-sm">{{ comment.username }}</span>
             <span class="text-xs text-zinc-500">{{ new Date(comment.created_at).toLocaleString() }}</span>
@@ -88,6 +89,7 @@
                   :user-id="reply.user_id"
                   :username="reply.username"
                   :avatar-url="reply.avatar_url"
+                  size="sm"
                 />
                 <span v-else class="font-medium text-sm">{{ reply.username }}</span>
                 <span class="text-xs text-zinc-500">{{ new Date(reply.created_at).toLocaleString() }}</span>
