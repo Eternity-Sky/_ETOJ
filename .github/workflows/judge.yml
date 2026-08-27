@@ -30,18 +30,6 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc g++ g++-9 php python3 pypy3 openjdk-8-jdk openjdk-11-jdk openjdk-17-jdk openjdk-21-jdk golang-go rustc cargo time dotnet-sdk-8.0 kotlin scala default-jre mono-complete
-          npm install node-fetch
-          npm install -g typescript
-          # Install Dart SDK
-          wget https://storage.googleapis.com/dart-archive/channels/stable/release/3.5.3/sdk/dartsdk-linux-x64-release.zip
-          unzip dartsdk-linux-x64-release.zip
-          sudo mv dart-sdk /opt/
-          echo 'export PATH="$PATH:/opt/dart-sdk/bin"' >> $GITHUB_ENV
-
       - name: Write submission data
         env:
           PAYLOAD: ${{ toJson(github.event.client_payload) }}
@@ -67,6 +55,54 @@ jobs:
             fs.writeFileSync(fname, p.code);
             console.log('Wrote', fname, 'length', p.code.length);
           "
+
+      - name: Install language dependencies
+        env:
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: |
+          LANGUAGE=$(node -e "const p = require('./submission.json'); console.log(p.language);")
+          sudo apt-get update
+
+          # Install common tools
+          sudo apt-get install -y time
+
+          # Install based on language
+          if [[ "$LANGUAGE" == "c" ]] || [[ "$LANGUAGE" == cpp* ]]; then
+            sudo apt-get install -y gcc g++ g++-9
+          elif [[ "$LANGUAGE" == "python3" ]]; then
+            sudo apt-get install -y python3
+          elif [[ "$LANGUAGE" == "pypy3" ]]; then
+            sudo apt-get install -y pypy3
+          elif [[ "$LANGUAGE" == java* ]]; then
+            sudo apt-get install -y openjdk-8-jdk openjdk-11-jdk openjdk-17-jdk openjdk-21-jdk default-jre
+          elif [[ "$LANGUAGE" == "go" ]]; then
+            sudo apt-get install -y golang-go
+          elif [[ "$LANGUAGE" == "rust" ]]; then
+            sudo apt-get install -y rustc cargo
+          elif [[ "$LANGUAGE" == "javascript" ]]; then
+            sudo apt-get install -y nodejs npm
+            npm install node-fetch
+          elif [[ "$LANGUAGE" == "typescript" ]]; then
+            sudo apt-get install -y nodejs npm
+            npm install node-fetch
+            npm install -g typescript
+          elif [[ "$LANGUAGE" == "csharp" ]]; then
+            sudo apt-get install -y dotnet-sdk-8.0 mono-complete
+          elif [[ "$LANGUAGE" == "kotlin" ]]; then
+            sudo apt-get install -y kotlin default-jre
+          elif [[ "$LANGUAGE" == "scala" ]]; then
+            sudo apt-get install -y scala default-jre
+          elif [[ "$LANGUAGE" == "dart" ]]; then
+            wget https://storage.googleapis.com/dart-archive/channels/stable/release/3.5.3/sdk/dartsdk-linux-x64-release.zip
+            unzip dartsdk-linux-x64-release.zip
+            sudo mv dart-sdk /opt/
+            echo 'export PATH="$PATH:/opt/dart-sdk/bin"' >> $GITHUB_ENV
+          elif [[ "$LANGUAGE" == "php" ]]; then
+            sudo apt-get install -y php
+          else
+            echo "Unknown language: $LANGUAGE"
+            exit 1
+          fi
 
       - name: Run judge
         id: judge
