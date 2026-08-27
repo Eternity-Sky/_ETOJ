@@ -609,6 +609,141 @@ app.post("/api/discussions/:id/replies", authMiddleware, async (c) => {
   }
 });
 
+// 编辑帖子
+app.put("/api/discussions/:id", authMiddleware, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const id = Number(c.req.param("id"));
+    const body = await c.req.json();
+
+    const title = String(body.title || "").trim();
+    const content = String(body.content || "").trim();
+
+    if (!title) return c.json({ error: "请输入标题" }, 400);
+    if (!content) return c.json({ error: "请输入内容" }, 400);
+    if (title.length > 100) {
+      return c.json({ error: "标题不能超过100个字符" }, 400);
+    }
+    if (content.length > 20000) {
+      return c.json({ error: "内容不能超过20000个字符" }, 400);
+    }
+
+    const discussion: any = await c.env.DB.prepare(`
+      SELECT user_id FROM discussions WHERE id = ?
+    `).bind(id).first();
+
+    if (!discussion) {
+      return c.json({ error: "帖子不存在" }, 404);
+    }
+
+    const user: any = await c.env.DB.prepare(`
+      SELECT role FROM users WHERE id = ?
+    `).bind(userId).first();
+
+    const isAdmin = user?.role === "admin";
+
+    if (discussion.user_id !== userId && !isAdmin) {
+      return c.json({ error: "没有权限编辑此帖子" }, 403);
+    }
+
+    await c.env.DB.prepare(`
+      UPDATE discussions
+      SET title = ?, content = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(title, content, id).run();
+
+    return c.json({ message: "帖子编辑成功" });
+  } catch (e: any) {
+    return c.json({
+      error: e.message || "编辑失败"
+    }, 500);
+  }
+});
+
+// 删除帖子
+app.delete("/api/discussions/:id", authMiddleware, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const id = Number(c.req.param("id"));
+
+    const discussion: any = await c.env.DB.prepare(`
+      SELECT user_id FROM discussions WHERE id = ?
+    `).bind(id).first();
+
+    if (!discussion) {
+      return c.json({ error: "帖子不存在" }, 404);
+    }
+
+    const user: any = await c.env.DB.prepare(`
+      SELECT role FROM users WHERE id = ?
+    `).bind(userId).first();
+
+    const isAdmin = user?.role === "admin";
+
+    if (discussion.user_id !== userId && !isAdmin) {
+      return c.json({ error: "没有权限删除此帖子" }, 403);
+    }
+
+    await c.env.DB.prepare(`
+      DELETE FROM discussion_replies
+      WHERE discussion_id = ?
+    `).bind(id).run();
+
+    await c.env.DB.prepare(`
+      DELETE FROM discussions
+      WHERE id = ?
+    `).bind(id).run();
+
+    return c.json({ message: "帖子删除成功" });
+  } catch (e: any) {
+    return c.json({
+      error: e.message || "删除失败"
+    }, 500);
+  }
+});
+
+// 置顶/取消置顶帖子
+app.patch("/api/discussions/:id/pin", authMiddleware, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const id = Number(c.req.param("id"));
+    const body = await c.req.json();
+
+    const user: any = await c.env.DB.prepare(`
+      SELECT role FROM users WHERE id = ?
+    `).bind(userId).first();
+
+    if (user?.role !== "admin") {
+      return c.json({ error: "只有管理员可以置顶帖子" }, 403);
+    }
+
+    const discussion: any = await c.env.DB.prepare(`
+      SELECT id FROM discussions WHERE id = ?
+    `).bind(id).first();
+
+    if (!discussion) {
+      return c.json({ error: "帖子不存在" }, 404);
+    }
+
+    const pinned = Boolean(body.pinned);
+
+    await c.env.DB.prepare(`
+      UPDATE discussions
+      SET is_pinned = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(pinned ? 1 : 0, id).run();
+
+    return c.json({
+      message: pinned ? "帖子已置顶" : "帖子已取消置顶",
+      is_pinned: pinned
+    });
+  } catch (e: any) {
+    return c.json({
+      error: e.message || "操作失败"
+    }, 500);
+  }
+});
+
 app.get("/api/problems", async (c) => {
   const page = Number(c.req.query("page") || 1);
   const pageSize = Number(c.req.query("pageSize") || 20);
