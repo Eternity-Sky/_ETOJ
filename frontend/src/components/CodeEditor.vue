@@ -6,6 +6,8 @@ import { javascript } from '@codemirror/lang-javascript'
 import { cpp } from '@codemirror/lang-cpp'
 import { python } from '@codemirror/lang-python'
 import { java } from '@codemirror/lang-java'
+import { go } from '@codemirror/lang-go'
+import { rust } from '@codemirror/lang-rust'
 import { oneDark } from '@codemirror/theme-one-dark'
 
 const props = defineProps<{
@@ -30,6 +32,8 @@ const languageExtensions: Record<string, any> = {
   java11: java(),
   java17: java(),
   java21: java(),
+  go: go(),
+  rust: rust(),
   // 可以添加更多语言支持
 }
 

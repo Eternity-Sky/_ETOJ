@@ -218,5 +218,7 @@ export const LANGUAGES = [
   { value: "java11", label: "Java 11", ext: "java" },
   { value: "java17", label: "Java 17", ext: "java" },
   { value: "java21", label: "Java 21", ext: "java" },
+  { value: "go", label: "Go", ext: "go" },
+  { value: "rust", label: "Rust", ext: "rs" },
   { value: "php", label: "PHP", ext: "php" },
 ];

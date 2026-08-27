@@ -47,6 +47,10 @@ const templates: Record<string, string> = {
 
   java21: `import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    public static void main(String[] args) throws Exception {
         \n    }\n}\n`,
+
+  go: `package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, ETOJ")\n}\n`,
+
+  rust: `fn main() {\n    println!("Hello, ETOJ");\n}\n`,
 }
 
 const acceptRate = computed(() => {
