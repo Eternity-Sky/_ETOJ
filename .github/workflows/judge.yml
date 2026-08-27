@@ -30,6 +30,11 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
       - name: Write submission data
         env:
           PAYLOAD: ${{ toJson(github.event.client_payload) }}
@@ -86,8 +91,6 @@ jobs:
             sudo apt-get install -y nodejs npm
             npm install node-fetch
             npm install -g typescript
-          elif [[ "$LANGUAGE" == "csharp" ]]; then
-            sudo apt-get install -y dotnet-sdk-8.0 mono-complete
           elif [[ "$LANGUAGE" == "kotlin" ]]; then
             sudo apt-get install -y kotlin default-jre
           elif [[ "$LANGUAGE" == "scala" ]]; then

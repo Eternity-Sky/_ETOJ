@@ -262,24 +262,58 @@ async function main() {
         }
       } else if (language === 'csharp') {
         try {
+          const csproj = path.join(workdir, 'Main.csproj');
+          const srcFileName = path.basename(srcPath);
+
+          // Create a simple csproj file that includes the source file
+          fs.writeFileSync(
+            csproj,
+            `<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="${srcFileName}" />
+  </ItemGroup>
+</Project>`
+          );
+
           execFileSync(
-            'csc',
+            'dotnet',
             [
-              srcPath,
-              '/out:Main.exe'
+              'build',
+              csproj,
+              '-c',
+              'Release',
+              '--nologo',
+              '-o',
+              path.join(workdir, 'out')
             ],
             {
               cwd: workdir,
-              timeout: 10000
+              timeout: 30000,
+              stdio: 'pipe'
             }
           );
 
-          runCmd = ['mono', 'Main.exe'];
+          runCmd = [
+            'dotnet',
+            path.join(workdir, 'out', 'Main.dll')
+          ];
 
         } catch (e) {
+          let errorMsg =
+            e.stderr?.toString() ||
+            e.stdout?.toString() ||
+            e.message ||
+            'C# compilation error';
+
           compileStatus = {
             status: 'compile_error',
-            msg: e.message
+            msg: errorMsg
           };
         }
       } else if (language === 'kotlin') {
