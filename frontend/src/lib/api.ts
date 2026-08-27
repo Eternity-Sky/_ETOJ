@@ -58,6 +58,8 @@ export const api = {
     request<T>(p, { method: "POST", body }),
   put: <T = any>(p: string, body?: any) =>
     request<T>(p, { method: "PUT", body }),
+  patch: <T = any>(p: string, body?: any) =>
+    request<T>(p, { method: "PATCH", body }),
   del: <T = any>(p: string) => request<T>(p, { method: "DELETE" }),
   clearCache: () => cache.clear(),
   

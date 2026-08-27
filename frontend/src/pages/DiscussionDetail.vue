@@ -125,7 +125,7 @@ async function deleteDiscussion() {
   }
 
   try {
-    await api.delete(
+    await api.del(
       `/api/discussions/${route.params.id}`
     )
 
