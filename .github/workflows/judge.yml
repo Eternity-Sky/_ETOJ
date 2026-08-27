@@ -91,6 +91,9 @@ jobs:
             sudo apt-get install -y nodejs npm
             npm install node-fetch
             npm install -g typescript
+          elif [[ "$LANGUAGE" == "csharp" ]]; then
+            # .NET SDK is already installed via actions/setup-dotnet@v4
+            echo "Using .NET SDK from setup-dotnet action"
           elif [[ "$LANGUAGE" == "kotlin" ]]; then
             sudo apt-get install -y kotlin default-jre
           elif [[ "$LANGUAGE" == "scala" ]]; then
