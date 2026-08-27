@@ -24,9 +24,10 @@ let view: EditorView | null = null
 const languageExtensions: Record<string, any> = {
   javascript: javascript(),
   cpp: cpp(),
-  python: python(),
+  python3: python(),
   pypy3: python(),
   java8: java(),
+  java11: java(),
   // 可以添加更多语言支持
 }
 

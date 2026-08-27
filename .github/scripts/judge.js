@@ -52,13 +52,14 @@ async function main() {
     cpp17: 'cpp',
     cpp20: 'cpp',
     cpp23: 'cpp',
-    python: 'py',
+    python3: 'py',
     pypy3: 'py',
     java8: 'java',
+    java11: 'java',
     php: 'php'
   };
   const ext = extMap[language] || 'cpp';
-  const srcName = language === 'java8' ? 'Main.java' : `solution.${ext}`;
+  const srcName = (language === 'java8' || language === 'java11') ? 'Main.java' : `solution.${ext}`;
   const srcPath = path.join(workdir, srcName);
   fs.writeFileSync(srcPath, code);
 
@@ -92,7 +93,7 @@ async function main() {
       } else if (language === 'cpp23') {
         execFileSync('g++', ['-O2', '-std=c++23', '-o', 'solution', 'solution.cpp'], { cwd: workdir, timeout: 15000, stdio: 'pipe' });
         runCmd = [path.join(workdir, 'solution')];
-      } else if (language === 'python') {
+      } else if (language === 'python3') {
         // Python 3 语法检查
         try {
           execFileSync('python3', ['-m', 'py_compile', srcPath], { cwd: workdir, timeout: 10000, stdio: 'pipe' });
@@ -129,6 +130,32 @@ async function main() {
           }
 
           console.error('Java 编译错误:', errorMsg);
+
+          compileStatus = {
+            status: 'compile_error',
+            msg: errorMsg
+          };
+        }
+      } else if (language === 'java11') {
+        try {
+          execFileSync('javac', ['-encoding', 'UTF-8', '--release', '11', srcPath], {
+            cwd: workdir,
+            timeout: 10000,
+            stdio: 'pipe'
+          });
+
+          runCmd = ['java', '-cp', workdir, 'Main'];
+
+        } catch (e) {
+          let errorMsg = e.message || 'Java 11 compilation error';
+
+          if (e.stderr) {
+            errorMsg = e.stderr.toString();
+          } else if (e.stdout) {
+            errorMsg = e.stdout.toString();
+          }
+
+          console.error('Java 11 编译错误:', errorMsg);
 
           compileStatus = {
             status: 'compile_error',
