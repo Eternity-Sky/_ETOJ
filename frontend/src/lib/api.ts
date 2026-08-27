@@ -222,5 +222,9 @@ export const LANGUAGES = [
   { value: "rust", label: "Rust", ext: "rs" },
   { value: "javascript", label: "JavaScript (Node.js)", ext: "js" },
   { value: "typescript", label: "TypeScript", ext: "ts" },
+  { value: "csharp", label: "C#", ext: "cs" },
+  { value: "kotlin", label: "Kotlin", ext: "kt" },
+  { value: "scala", label: "Scala", ext: "scala" },
+  { value: "dart", label: "Dart", ext: "dart" },
   { value: "php", label: "PHP", ext: "php" },
 ];

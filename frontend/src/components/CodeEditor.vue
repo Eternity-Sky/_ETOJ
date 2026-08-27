@@ -8,6 +8,9 @@ import { python } from '@codemirror/lang-python'
 import { java } from '@codemirror/lang-java'
 import { go } from '@codemirror/lang-go'
 import { rust } from '@codemirror/lang-rust'
+import { csharp } from '@replit/codemirror-lang-csharp'
+import { StreamLanguage } from '@codemirror/language'
+import { kotlin } from '@codemirror/legacy-modes/mode/clike'
 import { oneDark } from '@codemirror/theme-one-dark'
 
 const props = defineProps<{
@@ -35,6 +38,10 @@ const languageExtensions: Record<string, any> = {
   java21: java(),
   go: go(),
   rust: rust(),
+  csharp: csharp(),
+  kotlin: StreamLanguage.define(kotlin),
+  scala: javascript(),
+  dart: javascript(),
   // 可以添加更多语言支持
 }
 

@@ -55,6 +55,17 @@ const templates: Record<string, string> = {
   javascript: `const fs = require("fs");\n\nconsole.log("Hello ETOJ");\n`,
 
   typescript: `function main() {\n    console.log("Hello ETOJ");\n}\n\nmain();\n`,
+
+  csharp: `using System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello ETOJ");\n    }\n}\n`,
+
+  kotlin: `fun main(args: Array<String>) {
+    println("Hello ETOJ")
+}
+`,
+
+  scala: `object Main {\n    def main(args:Array[String]):Unit={\n        println("Hello ETOJ")\n    }\n}\n`,
+
+  dart: `void main(){\n    print("Hello ETOJ");\n}\n`,
 }
 
 const acceptRate = computed(() => {

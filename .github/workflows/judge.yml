@@ -31,7 +31,16 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y gcc g++ g++-9 php python3 pypy3 openjdk-8-jdk openjdk-11-jdk openjdk-17-jdk openjdk-21-jdk golang-go rustc cargo time && npm install node-fetch && npm install -g typescript
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc g++ g++-9 php python3 pypy3 openjdk-8-jdk openjdk-11-jdk openjdk-17-jdk openjdk-21-jdk golang-go rustc cargo time dotnet-sdk-8.0 kotlin scala default-jre mono-complete
+          npm install node-fetch
+          npm install -g typescript
+          # Install Dart SDK
+          wget https://storage.googleapis.com/dart-archive/channels/stable/release/3.5.3/sdk/dartsdk-linux-x64-release.zip
+          unzip dartsdk-linux-x64-release.zip
+          sudo mv dart-sdk /opt/
+          echo 'export PATH="$PATH:/opt/dart-sdk/bin"' >> $GITHUB_ENV
 
       - name: Write submission data
         env:
@@ -41,9 +50,20 @@ jobs:
           node -e "
             const p = require('./submission.json');
             const fs = require('fs');
-            const ext = { c: 'c', cpp: 'cpp', python3: 'py', pypy3: 'py', java8: 'java', java11: 'java', java17: 'java', java21: 'java', go: 'go', rust: 'rs', javascript: 'js', typescript: 'ts' };
+            const ext = { c: 'c', cpp: 'cpp', python3: 'py', pypy3: 'py', java8: 'java', java11: 'java', java17: 'java', java21: 'java', go: 'go', rust: 'rs', javascript: 'js', typescript: 'ts', csharp: 'cs', kotlin: 'kt', scala: 'scala', dart: 'dart' };
             const e = ext[p.language] || p.language;
-            const fname = (p.language.startsWith('java')) ? 'Main.java' : ('solution.' + e);
+            let fname;
+            if (p.language.startsWith('java')) {
+              fname = 'Main.java';
+            } else if (p.language === 'scala') {
+              fname = 'Main.scala';
+            } else if (p.language === 'csharp') {
+              fname = 'Program.cs';
+            } else if (p.language === 'kotlin') {
+              fname = 'Main.kt';
+            } else {
+              fname = 'solution.' + e;
+            }
             fs.writeFileSync(fname, p.code);
             console.log('Wrote', fname, 'length', p.code.length);
           "

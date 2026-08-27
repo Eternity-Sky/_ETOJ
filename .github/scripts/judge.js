@@ -62,10 +62,25 @@ async function main() {
     rust: 'rs',
     javascript: 'js',
     typescript: 'ts',
+    csharp: 'cs',
+    kotlin: 'kt',
+    scala: 'scala',
+    dart: 'dart',
     php: 'php'
   };
   const ext = extMap[language] || 'cpp';
-  const srcName = language.startsWith('java') ? 'Main.java' : `solution.${ext}`;
+  let srcName;
+  if (language.startsWith('java')) {
+    srcName = 'Main.java';
+  } else if (language === 'scala') {
+    srcName = 'Main.scala';
+  } else if (language === 'csharp') {
+    srcName = 'Program.cs';
+  } else if (language === 'kotlin') {
+    srcName = 'Main.kt';
+  } else {
+    srcName = `solution.${ext}`;
+  }
   const srcPath = path.join(workdir, srcName);
   fs.writeFileSync(srcPath, code);
 
@@ -245,6 +260,83 @@ async function main() {
             msg: e.stderr?.toString() || e.message
           };
         }
+      } else if (language === 'csharp') {
+        try {
+          execFileSync(
+            'csc',
+            [
+              srcPath,
+              '/out:Main.exe'
+            ],
+            {
+              cwd: workdir,
+              timeout: 10000
+            }
+          );
+
+          runCmd = ['mono', 'Main.exe'];
+
+        } catch (e) {
+          compileStatus = {
+            status: 'compile_error',
+            msg: e.message
+          };
+        }
+      } else if (language === 'kotlin') {
+        try {
+          execFileSync(
+            'kotlinc',
+            [
+              srcPath,
+              '-include-runtime',
+              '-d',
+              'main.jar'
+            ],
+            {
+              cwd: workdir,
+              timeout: 10000
+            }
+          );
+
+          runCmd = [
+            'java',
+            '-jar',
+            'main.jar'
+          ];
+
+        } catch (e) {
+          compileStatus = {
+            status: 'compile_error',
+            msg: e.message
+          };
+        }
+      } else if (language === 'scala') {
+        try {
+          execFileSync(
+            'scalac',
+            [srcPath],
+            {
+              cwd: workdir,
+              timeout: 10000
+            }
+          );
+
+          runCmd = [
+            'scala',
+            'Main'
+          ];
+
+        } catch (e) {
+          compileStatus = {
+            status: 'compile_error',
+            msg: e.message
+          };
+        }
+      } else if (language === 'dart') {
+        runCmd = [
+          'dart',
+          srcPath
+        ];
       } else if (language === 'php') {
         runCmd = ['php', srcPath];
       } else {
