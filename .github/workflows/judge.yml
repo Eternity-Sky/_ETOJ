@@ -96,7 +96,8 @@ jobs:
             wget https://storage.googleapis.com/dart-archive/channels/stable/release/3.5.3/sdk/dartsdk-linux-x64-release.zip
             unzip dartsdk-linux-x64-release.zip
             sudo mv dart-sdk /opt/
-            echo 'export PATH="$PATH:/opt/dart-sdk/bin"' >> $GITHUB_ENV
+            export PATH="$PATH:/opt/dart-sdk/bin"
+            echo "/opt/dart-sdk/bin" >> $GITHUB_PATH
           elif [[ "$LANGUAGE" == "php" ]]; then
             sudo apt-get install -y php
           else
@@ -106,7 +107,14 @@ jobs:
 
       - name: Run judge
         id: judge
-        run: node .github/scripts/judge.js submission.json 2>&1 | tee judge_output.log
+        env:
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: |
+          LANGUAGE=$(node -e "const p = require('./submission.json'); console.log(p.language);")
+          if [ "$LANGUAGE" = "dart" ]; then
+            export PATH="$PATH:/opt/dart-sdk/bin"
+          fi
+          node .github/scripts/judge.js submission.json 2>&1 | tee judge_output.log
         continue-on-error: true
 
       - name: Capture compiler output
