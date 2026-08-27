@@ -9,6 +9,9 @@ import Login from './pages/Login.vue'
 import Register from './pages/Register.vue'
 import UserCenter from './pages/UserCenter.vue'
 import Admin from './pages/Admin.vue'
+import Discussions from './pages/Discussions.vue'
+import DiscussionNew from './pages/DiscussionNew.vue'
+import DiscussionDetail from './pages/DiscussionDetail.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -23,12 +26,20 @@ const router = createRouter({
     { path: '/register', component: Register },
     { path: '/me', component: UserCenter },
     { path: '/admin', component: Admin },
+    { path: '/discussions', component: Discussions },
+    { path: '/discussions/new', component: DiscussionNew },
+    { path: '/discussion/:id', component: DiscussionDetail, props: true },
   ],
   scrollBehavior: () => ({ top: 0 })
 })
 
 router.beforeEach((to) => {
-  const protectedPaths = ['/submissions', '/me', '/admin']
+  const protectedPaths = [
+    "/submissions",
+    "/me",
+    "/admin",
+    "/discussions/new"
+  ]
   if (protectedPaths.some(p => to.path.startsWith(p)) && !localStorage.getItem('etoj_token')) {
     return '/login'
   }

@@ -290,6 +290,215 @@ app.put("/api/auth/email", authMiddleware, async (c) => {
   }
 });
 
+// ==================== Discussions ====================
+
+// 获取讨论区帖子列表
+app.get("/api/discussions", async (c) => {
+  const page = Math.max(Number(c.req.query("page") || 1), 1);
+  const pageSize = Math.min(
+    Math.max(Number(c.req.query("pageSize") || 20), 1),
+    50
+  );
+
+  const offset = (page - 1) * pageSize;
+
+  const items = await c.env.DB.prepare(`
+    SELECT
+      d.id,
+      d.title,
+      d.views,
+      d.reply_count,
+      d.is_pinned,
+      d.is_locked,
+      d.created_at,
+      d.updated_at,
+      u.id AS user_id,
+      u.username
+    FROM discussions d
+    JOIN users u ON u.id = d.user_id
+    ORDER BY d.is_pinned DESC, d.updated_at DESC, d.id DESC
+    LIMIT ? OFFSET ?
+  `)
+    .bind(pageSize, offset)
+    .all();
+
+  const total: any = await c.env.DB.prepare(`
+    SELECT COUNT(*) AS count
+    FROM discussions
+  `).first();
+
+  return c.json({
+    items: items.results || [],
+    total: Number(total?.count || 0),
+    page,
+    pageSize
+  });
+});
+
+// 获取帖子详情
+app.get("/api/discussions/:id", async (c) => {
+  const id = Number(c.req.param("id"));
+
+  const discussion: any = await c.env.DB.prepare(`
+    SELECT
+      d.id,
+      d.title,
+      d.content,
+      d.views,
+      d.reply_count,
+      d.is_pinned,
+      d.is_locked,
+      d.created_at,
+      d.updated_at,
+      u.id AS user_id,
+      u.username
+    FROM discussions d
+    JOIN users u ON u.id = d.user_id
+    WHERE d.id = ?
+  `)
+    .bind(id)
+    .first();
+
+  if (!discussion) {
+    return c.json({ error: "帖子不存在" }, 404);
+  }
+
+  await c.env.DB.prepare(`
+    UPDATE discussions
+    SET views = views + 1
+    WHERE id = ?
+  `)
+    .bind(id)
+    .run();
+
+  const replies = await c.env.DB.prepare(`
+    SELECT
+      r.id,
+      r.content,
+      r.created_at,
+      u.id AS user_id,
+      u.username
+    FROM discussion_replies r
+    JOIN users u ON u.id = r.user_id
+    WHERE r.discussion_id = ?
+    ORDER BY r.id ASC
+  `)
+    .bind(id)
+    .all();
+
+  return c.json({
+    discussion: {
+      ...discussion,
+      views: Number(discussion.views || 0) + 1
+    },
+    replies: replies.results || []
+  });
+});
+
+// 发布帖子
+app.post("/api/discussions", authMiddleware, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const body = await c.req.json();
+
+    const title = String(body.title || "").trim();
+    const content = String(body.content || "").trim();
+
+    if (!title) {
+      return c.json({ error: "请输入标题" }, 400);
+    }
+
+    if (!content) {
+      return c.json({ error: "请输入内容" }, 400);
+    }
+
+    if (title.length > 100) {
+      return c.json({ error: "标题不能超过100个字符" }, 400);
+    }
+
+    if (content.length > 20000) {
+      return c.json({ error: "内容不能超过20000个字符" }, 400);
+    }
+
+    const result = await c.env.DB.prepare(`
+      INSERT INTO discussions
+        (user_id, title, content)
+      VALUES (?, ?, ?)
+    `)
+      .bind(userId, title, content)
+      .run();
+
+    return c.json({
+      id: Number((result.meta as any).last_row_id)
+    });
+  } catch (e: any) {
+    return c.json({
+      error: e.message || "发布失败"
+    }, 500);
+  }
+});
+
+// 回复帖子
+app.post("/api/discussions/:id/replies", authMiddleware, async (c) => {
+  try {
+    const userId = c.get("userId");
+    const discussionId = Number(c.req.param("id"));
+    const body = await c.req.json();
+
+    const content = String(body.content || "").trim();
+
+    if (!content) {
+      return c.json({ error: "请输入回复内容" }, 400);
+    }
+
+    if (content.length > 10000) {
+      return c.json({ error: "回复不能超过10000个字符" }, 400);
+    }
+
+    const discussion: any = await c.env.DB.prepare(`
+      SELECT id, is_locked
+      FROM discussions
+      WHERE id = ?
+    `)
+      .bind(discussionId)
+      .first();
+
+    if (!discussion) {
+      return c.json({ error: "帖子不存在" }, 404);
+    }
+
+    if (discussion.is_locked) {
+      return c.json({ error: "该帖子已锁定" }, 403);
+    }
+
+    const result = await c.env.DB.prepare(`
+      INSERT INTO discussion_replies
+        (discussion_id, user_id, content)
+      VALUES (?, ?, ?)
+    `)
+      .bind(discussionId, userId, content)
+      .run();
+
+    await c.env.DB.prepare(`
+      UPDATE discussions
+      SET
+        reply_count = reply_count + 1,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `)
+      .bind(discussionId)
+      .run();
+
+    return c.json({
+      id: Number((result.meta as any).last_row_id)
+    });
+  } catch (e: any) {
+    return c.json({
+      error: e.message || "回复失败"
+    }, 500);
+  }
+});
+
 app.get("/api/problems", async (c) => {
   const page = Number(c.req.query("page") || 1);
   const pageSize = Number(c.req.query("pageSize") || 20);

@@ -37,6 +37,7 @@ onMounted(() => {
         </RouterLink>
         <nav class="hidden md:flex items-center gap-1 text-sm">
           <RouterLink to="/problems" class="px-3 py-1.5 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100">题目</RouterLink>
+          <RouterLink to="/discussions" class="px-3 py-1.5 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100">讨论区</RouterLink>
           <RouterLink to="/submissions" class="px-3 py-1.5 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100">提交</RouterLink>
           <RouterLink to="/rankings" class="px-3 py-1.5 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100">排行榜</RouterLink>
           <RouterLink v-if="user && user.username === 'admin'" to="/admin" class="px-3 py-1.5 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100">后台</RouterLink>
