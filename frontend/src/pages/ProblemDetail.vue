@@ -65,7 +65,18 @@ const templates: Record<string, string> = {
 
   scala: `object Main {\n    def main(args:Array[String]):Unit={\n        println("Hello ETOJ")\n    }\n}\n`,
 
-  dart: `void main(){\n    print("Hello ETOJ");\n}\n`,
+  dart: `void main(){
+    print("Hello ETOJ");
+}
+`,
+
+  swift: `import Foundation
+
+let a = Int(readLine()!)!
+let b = Int(readLine()!)!
+
+print(a + b)
+`,
 }
 
 const acceptRate = computed(() => {
@@ -76,7 +87,7 @@ const acceptRate = computed(() => {
 })
 
 watch(language, (v) => {
-  if (!code.value) code.value = templates[v] || ''
+  if (!code.value) code.value = templates[v.value] || ''
 })
 
 watch(activeTab, (v) => {

@@ -66,6 +66,7 @@ async function main() {
     kotlin: 'kt',
     scala: 'scala',
     dart: 'dart',
+    swift: 'swift',
     php: 'php'
   };
   const ext = extMap[language] || 'cpp';
@@ -412,6 +413,30 @@ async function main() {
         }
       } else if (language === 'php') {
         runCmd = ['php', srcPath];
+      } else if (language === 'swift') {
+        try {
+          execFileSync('swiftc', [srcPath, '-o', 'main'], {
+            cwd: workdir,
+            timeout: 30000,
+            stdio: 'pipe'
+          });
+
+          runCmd = [`${workdir}/main`];
+
+        } catch (e) {
+          let errorMsg = e.message || 'Swift compilation error';
+
+          if (e.stderr) {
+            errorMsg = e.stderr.toString();
+          } else if (e.stdout) {
+            errorMsg = e.stdout.toString();
+          }
+
+          compileStatus = {
+            status: 'compile_error',
+            msg: errorMsg
+          };
+        }
       } else {
         compileStatus = { status: 'unknown_language', msg: `Unsupported language: ${language}.` };
       }

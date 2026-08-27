@@ -43,7 +43,7 @@ jobs:
           node -e "
             const p = require('./submission.json');
             const fs = require('fs');
-            const ext = { c: 'c', cpp: 'cpp', python3: 'py', pypy3: 'py', java8: 'java', java11: 'java', java17: 'java', java21: 'java', go: 'go', rust: 'rs', javascript: 'js', typescript: 'ts', csharp: 'cs', kotlin: 'kt', scala: 'scala', dart: 'dart' };
+            const ext = { c: 'c', cpp: 'cpp', python3: 'py', pypy3: 'py', java8: 'java', java11: 'java', java17: 'java', java21: 'java', go: 'go', rust: 'rs', javascript: 'js', typescript: 'ts', csharp: 'cs', kotlin: 'kt', scala: 'scala', dart: 'dart', swift: 'swift', php: 'php' };
             const e = ext[p.language] || p.language;
             let fname;
             if (p.language.startsWith('java')) {
@@ -104,6 +104,8 @@ jobs:
             sudo mv dart-sdk /opt/
             export PATH="$PATH:/opt/dart-sdk/bin"
             echo "/opt/dart-sdk/bin" >> $GITHUB_PATH
+          elif [[ "$LANGUAGE" == "swift" ]]; then
+            sudo apt-get install -y swift
           elif [[ "$LANGUAGE" == "php" ]]; then
             sudo apt-get install -y php
           else

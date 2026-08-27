@@ -246,5 +246,6 @@ export const LANGUAGES = [
   { value: "kotlin", label: "Kotlin", ext: "kt" },
   { value: "scala", label: "Scala", ext: "scala" },
   { value: "dart", label: "Dart", ext: "dart" },
+  { value: "swift", label: "Swift", ext: "swift" },
   { value: "php", label: "PHP", ext: "php" },
 ];

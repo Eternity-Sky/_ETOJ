@@ -42,6 +42,7 @@ const languageExtensions: Record<string, any> = {
   kotlin: StreamLanguage.define(kotlin),
   scala: javascript(),
   dart: javascript(),
+  swift: javascript(),
   // 可以添加更多语言支持
 }
 

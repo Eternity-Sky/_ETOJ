@@ -8,6 +8,7 @@ import {
   STATUS_LABEL,
   DIFFICULTY_COLOR,
   DIFFICULTY_LABEL,
+  LANGUAGES,
 } from "@/lib/api";
 import { useToast } from '@/lib/toast'
 import UserLink from "@/components/UserLink.vue";
@@ -19,28 +20,19 @@ const total = ref(0);
 const page = ref(1);
 const pageSize = 20;
 const loading = ref(false);
-const judgeHealth = ref<any>(null);
-const healthLoading = ref(false);
+
+// 筛选条件
+const filterUser = ref('');
+const filterLanguage = ref('');
+const filterProblem = ref('');
+const filterStatus = ref('');
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize));
-
-const averageJudgeTime = computed(() => {
-  const completedSubmissions = items.value.filter(s => 
-    s.status !== 'pending' && s.status !== 'judging' && s.judge_latency_ms !== null && s.judge_latency_ms !== undefined
-  );
-  
-  if (completedSubmissions.length === 0) return null;
-  
-  const totalTimeMs = completedSubmissions.reduce((sum, s) => sum + (s.judge_latency_ms || 0), 0);
-  const averageMs = totalTimeMs / completedSubmissions.length;
-  // 转换为秒，保留1位小数
-  return (averageMs / 1000).toFixed(1);
-});
 
 async function retest(submissionId: number) {
   try {
     const res = await api.post<any>('/api/submissions/retest', { submissionId })
-    
+
     success('Rejudge successful')
     // 等待几秒后自动刷新
     setTimeout(() => {
@@ -54,10 +46,17 @@ async function retest(submissionId: number) {
 async function load() {
   loading.value = true
   try {
-    const res = await api.get<any>(
-      `/api/submissions?page=${page.value}&pageSize=${pageSize}`,
-    );
-    
+    const params = new URLSearchParams({
+      page: page.value.toString(),
+      pageSize: pageSize.toString(),
+    });
+    if (filterUser.value) params.append('user', filterUser.value);
+    if (filterLanguage.value) params.append('language', filterLanguage.value);
+    if (filterProblem.value) params.append('problem', filterProblem.value);
+    if (filterStatus.value) params.append('status', filterStatus.value);
+
+    const res = await api.get<any>(`/api/submissions?${params.toString()}`);
+
     items.value = res.items || [];
     total.value = res.total || 0;
   } catch (e: any) {
@@ -67,106 +66,108 @@ async function load() {
   }
 }
 
-async function loadJudgeHealth() {
-  try {
-    healthLoading.value = true;
-    const health = await api.get('/api/judge/health');
-    judgeHealth.value = health;
-  } catch (e: any) {
-    console.error('Failed to get judge status:', e);
-  } finally {
-    healthLoading.value = false;
-  }
+function applyFilter() {
+  page.value = 1;
+  load();
+}
+
+function clearFilter() {
+  filterUser.value = '';
+  filterLanguage.value = '';
+  filterProblem.value = '';
+  filterStatus.value = '';
+  page.value = 1;
+  load();
 }
 
 onMounted(() => {
   load();
-  loadJudgeHealth();
-  // 每30秒更新一次健康状态
-  setInterval(loadJudgeHealth, 30000);
 });
 </script>
 
 <template>
   <div class="space-y-5">
-    <h1 class="text-2xl font-bold">提交记录</h1>
-    
-    <!-- 评测机健康状态 -->
-    <div v-if="judgeHealth" class="card p-4">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div 
-            :class="[
-              'w-3 h-3 rounded-full',
-              judgeHealth.status === 'healthy' ? 'bg-emerald-500' :
-              judgeHealth.status === 'running' ? 'bg-blue-500' :
-              judgeHealth.status === 'queued' ? 'bg-yellow-500' :
-              judgeHealth.status === 'error' ? 'bg-red-500' : 'bg-zinc-500'
-            ]"
-          ></div>
-          <span class="font-medium">{{ judgeHealth.message }}</span>
+    <h1 class="text-2xl font-bold flex items-center gap-2">
+      <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+      </svg>
+      评测记录
+    </h1>
+
+    <!-- 筛选栏 -->
+    <div class="card p-4">
+      <div class="flex flex-wrap gap-3 items-end">
+        <div class="flex-1 min-w-[150px]">
+          <label class="block text-xs text-zinc-400 mb-1">用户</label>
+          <input
+            v-model="filterUser"
+            type="text"
+            placeholder="用户..."
+            class="input"
+          />
         </div>
-        <div class="text-sm text-zinc-500">
-          <span v-if="averageJudgeTime !== null" class="mr-4">
-            平均评测时间: {{ averageJudgeTime }}s
-          </span>
-          <span v-if="judgeHealth.latency !== null">
-            延迟: {{ judgeHealth.latency }}ms
-          </span>
-          <span v-if="judgeHealth.runId" class="ml-4">
-            <a 
-              :href="`https://github.com/Eternity-Sky/_ETOJ/actions/runs/${judgeHealth.runId}`"
-              target="_blank"
-              class="text-blue-600 hover:text-blue-700"
-            >
-              最新运行 #{{ judgeHealth.runId }}
-            </a>
-          </span>
+        <div class="flex-1 min-w-[150px]">
+          <label class="block text-xs text-zinc-400 mb-1">语言</label>
+          <select v-model="filterLanguage" class="input">
+            <option value="">全部语言</option>
+            <option v-for="lang in LANGUAGES" :key="lang.value" :value="lang.value">
+              {{ lang.label }}
+            </option>
+          </select>
         </div>
+        <div class="flex-1 min-w-[150px]">
+          <label class="block text-xs text-zinc-400 mb-1">题目</label>
+          <input
+            v-model="filterProblem"
+            type="text"
+            placeholder="题目..."
+            class="input"
+          />
+        </div>
+        <div class="flex-1 min-w-[150px]">
+          <label class="block text-xs text-zinc-400 mb-1">状态</label>
+          <select v-model="filterStatus" class="input">
+            <option value="">全部状态</option>
+            <option value="pending">pending</option>
+            <option value="compiling">compiling</option>
+            <option value="running">running</option>
+            <option value="accepted">accepted</option>
+            <option value="wrong_answer">wrong_answer</option>
+            <option value="time_limit_exceeded">time_limit_exceeded</option>
+            <option value="memory_limit_exceeded">memory_limit_exceeded</option>
+            <option value="compile_error">compile_error</option>
+            <option value="system_error">system_error</option>
+          </select>
+        </div>
+        <button @click="applyFilter" class="btn bg-green-600 text-white hover:bg-green-700">
+          筛选
+        </button>
+        <button @click="clearFilter" class="btn bg-zinc-600 text-white hover:bg-zinc-700">
+          清除
+        </button>
       </div>
     </div>
-    
+
     <div v-if="loading" class="flex items-center justify-center py-12">
       <div class="flex flex-col items-center gap-4">
-        <div class="w-8 h-8 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
+        <div class="w-8 h-8 border-4 border-zinc-600 border-t-blue-500 rounded-full animate-spin"></div>
         <div class="text-zinc-500">加载中...</div>
       </div>
     </div>
-    
+
     <div v-else class="card overflow-hidden">
       <table class="w-full text-sm">
-        <thead class="bg-zinc-50 border-b border-zinc-200 text-zinc-600">
+        <thead class="bg-zinc-800 border-b border-zinc-700 text-zinc-400">
           <tr>
             <th class="text-left px-4 py-3 font-medium w-24">#</th>
             <th class="text-left px-4 py-3 font-medium">用户</th>
             <th class="text-left px-4 py-3 font-medium">题目</th>
             <th class="text-left px-4 py-3 font-medium w-36">语言</th>
             <th class="text-left px-4 py-3 font-medium w-32">状态</th>
-            <th
-              class="text-right px-4 py-3 font-medium w-24 hidden sm:table-cell"
-            >
-              用时
-            </th>
-            <th
-              class="text-right px-4 py-3 font-medium w-24 hidden sm:table-cell"
-            >
-              内存
-            </th>
-            <th
-              class="text-right px-4 py-3 font-medium w-44 hidden md:table-cell"
-            >
-              提交时间
-            </th>
-            <th
-              class="text-right px-4 py-3 font-medium w-32 hidden lg:table-cell"
-            >
-              GitHub Actions
-            </th>
-            <th
-              class="text-right px-4 py-3 font-medium w-24 hidden lg:table-cell"
-            >
-              评测延迟
-            </th>
+            <th class="text-left px-4 py-3 font-medium w-24 hidden sm:table-cell">分数</th>
+            <th class="text-left px-4 py-3 font-medium w-24 hidden sm:table-cell">耗时</th>
+            <th class="text-left px-4 py-3 font-medium w-24 hidden sm:table-cell">内存</th>
+            <th class="text-left px-4 py-3 font-medium w-44 hidden md:table-cell">提交时间</th>
             <th class="text-right px-4 py-3 font-medium w-20">操作</th>
           </tr>
         </thead>
@@ -174,13 +175,13 @@ onMounted(() => {
           <tr
             v-for="s in items"
             :key="s.id"
-            class="border-b border-zinc-100 last:border-0 hover:bg-zinc-50/50"
+            class="border-b border-zinc-700 last:border-0 hover:bg-zinc-750"
           >
             <td class="px-4 py-3">
               <RouterLink
                 :to="`/submission/${s.id}`"
-                class="link font-mono text-xs"
-                >#{{ s.id }}</RouterLink
+                class="text-blue-400 hover:text-blue-300 font-mono text-xs"
+                >{{ s.id }}</RouterLink
               >
             </td>
             <td class="px-4 py-3">
@@ -196,66 +197,43 @@ onMounted(() => {
             <td class="px-4 py-3">
               <RouterLink
                 :to="`/problem/${s.problem_id}`"
-                class="link font-medium"
+                class="text-blue-400 hover:text-blue-300 font-medium"
                 >{{ s.problem_title }}</RouterLink
               >
             </td>
-            <td class="px-4 py-3 text-zinc-600 uppercase">{{ s.language }}</td>
+            <td class="px-4 py-3 text-zinc-400">{{ s.language }}</td>
             <td class="px-4 py-3">
               <span
-                :class="[
-                  'tag',
-                  STATUS_COLOR[s.status as keyof typeof STATUS_COLOR],
-                ]"
-                >{{
-                  STATUS_LABEL[s.status as keyof typeof STATUS_LABEL] ||
-                  s.status
-                }}</span
+                :class="{
+                  'text-green-400': s.status === 'accepted',
+                  'text-red-400': ['wrong_answer', 'time_limit_exceeded', 'memory_limit_exceeded', 'compile_error'].includes(s.status),
+                  'text-orange-400': s.status === 'pending',
+                  'text-yellow-400': ['compiling', 'running'].includes(s.status),
+                  'text-zinc-400': s.status === 'system_error',
+                }"
               >
-            </td>
-            <td
-              class="px-4 py-3 text-right text-zinc-600 font-mono text-xs hidden sm:table-cell"
-            >
-              {{ s.run_time_ms ?? "-" }} ms
-            </td>
-            <td
-              class="px-4 py-3 text-right text-zinc-600 font-mono text-xs hidden sm:table-cell"
-            >
-              {{ s.memory_kb ? (s.memory_kb / 1024).toFixed(1) + " MB" : "-" }}
-            </td>
-            <td
-              class="px-4 py-3 text-right text-zinc-500 text-xs hidden md:table-cell"
-            >
-              {{ new Date(s.created_at).toLocaleString() }}
-            </td>
-            <td
-              class="px-4 py-3 text-right text-zinc-500 text-xs hidden lg:table-cell"
-            >
-              <a 
-                v-if="s.github_run_id"
-                :href="`https://github.com/Eternity-Sky/_ETOJ/actions/runs/${s.github_run_id}`"
-                target="_blank"
-                class="text-blue-600 hover:text-blue-700 font-mono"
-              >
-                #{{ s.github_run_id }}
-              </a>
-              <span v-else class="text-zinc-400">-</span>
-            </td>
-            <td
-              class="px-4 py-3 text-right text-zinc-500 text-xs hidden lg:table-cell"
-            >
-              <span v-if="s.judge_latency_ms !== null && s.judge_latency_ms !== undefined">
-                {{ s.judge_latency_ms }}ms
+                {{ STATUS_LABEL[s.status as keyof typeof STATUS_LABEL] || s.status }}
               </span>
-              <span v-else class="text-zinc-400">-</span>
+            </td>
+            <td class="px-4 py-3 text-zinc-400 font-mono text-xs hidden sm:table-cell">
+              {{ s.score !== undefined ? `${s.score}/100` : '不可用' }}
+            </td>
+            <td class="px-4 py-3 text-zinc-400 font-mono text-xs hidden sm:table-cell">
+              {{ s.run_time_ms !== undefined ? `${s.run_time_ms}ms` : '-ms' }}
+            </td>
+            <td class="px-4 py-3 text-zinc-400 font-mono text-xs hidden sm:table-cell">
+              {{ s.memory_kb ? `${(s.memory_kb / 1024).toFixed(2)}MB` : '-MB' }}
+            </td>
+            <td class="px-4 py-3 text-zinc-500 text-xs hidden md:table-cell">
+              {{ new Date(s.created_at).toLocaleString('zh-CN') }}
             </td>
             <td class="px-4 py-3 text-right">
-              <RouterLink :to="`/submission/${s.id}`" class="btn-ghost text-blue-600 hover:text-blue-700 text-xs">详情</RouterLink>
-              <button @click="retest(s.id)" class="btn-ghost text-green-600 hover:text-green-700 text-xs ml-2">重测</button>
+              <RouterLink :to="`/submission/${s.id}`" class="text-blue-400 hover:text-blue-300 text-xs">详情</RouterLink>
+              <button @click="retest(s.id)" class="text-green-400 hover:text-green-300 text-xs ml-2">重测</button>
             </td>
           </tr>
           <tr v-if="!items.length">
-            <td colspan="11" class="px-4 py-10 text-center text-zinc-500">
+            <td colspan="10" class="px-4 py-10 text-center text-zinc-500">
               暂无提交记录
             </td>
           </tr>
@@ -263,27 +241,21 @@ onMounted(() => {
       </table>
       <div
         v-if="totalPages > 1"
-        class="flex items-center justify-between px-4 py-3 border-t border-zinc-100 text-sm"
+        class="flex items-center justify-between px-4 py-3 border-t border-zinc-700 text-sm"
       >
         <span class="text-zinc-500">共 {{ total }} 条</span>
         <div class="flex items-center gap-1">
           <button
             :disabled="page === 1"
-            @click="
-              page--;
-              load();
-            "
+            @click="page--; load();"
             class="btn-outline px-3 py-1.5"
           >
             上一页
           </button>
-          <span class="px-3 text-zinc-600">{{ page }} / {{ totalPages }}</span>
+          <span class="px-3 text-zinc-400">{{ page }} / {{ totalPages }}</span>
           <button
             :disabled="page >= totalPages"
-            @click="
-              page++;
-              load();
-            "
+            @click="page++; load();"
             class="btn-outline px-3 py-1.5"
           >
             下一页

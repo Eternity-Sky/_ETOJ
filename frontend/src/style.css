@@ -23,7 +23,7 @@
       "Microsoft YaHei",
       sans-serif;
   }
-  
+
   * {
     transition-property: color, background-color, border-color;
     transition-timing-function: ease;
@@ -65,5 +65,11 @@
   }
   pre {
     @apply bg-zinc-950 text-zinc-100 p-4 overflow-x-auto text-sm border border-zinc-700;
+  }
+}
+
+@layer utilities {
+  .hover\:bg-zinc-750:hover {
+    background-color: #2d3035;
   }
 }
