@@ -31,7 +31,7 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y gcc g++ g++-9 php python3 pypy3 time && npm install node-fetch
+        run: sudo apt-get update && sudo apt-get install -y gcc g++ g++-9 php python3 pypy3 openjdk-8-jdk time && npm install node-fetch
 
       - name: Write submission data
         env:
@@ -41,9 +41,9 @@ jobs:
           node -e "
             const p = require('./submission.json');
             const fs = require('fs');
-            const ext = { c: 'c', cpp: 'cpp', python3: 'py', pypy3: 'py', java: 'java', javascript: 'js', typescript: 'ts', rust: 'rs', go: 'go' };
+            const ext = { c: 'c', cpp: 'cpp', python: 'py', pypy3: 'py', java8: 'java', javascript: 'js', typescript: 'ts', rust: 'rs', go: 'go' };
             const e = ext[p.language] || p.language;
-            const fname = p.language === 'java' ? 'Main.java' : ('solution.' + e);
+            const fname = p.language === 'java8' ? 'Main.java' : ('solution.' + e);
             fs.writeFileSync(fname, p.code);
             console.log('Wrote', fname, 'length', p.code.length);
           "

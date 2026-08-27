@@ -5,6 +5,7 @@ import { EditorState } from '@codemirror/state'
 import { javascript } from '@codemirror/lang-javascript'
 import { cpp } from '@codemirror/lang-cpp'
 import { python } from '@codemirror/lang-python'
+import { java } from '@codemirror/lang-java'
 import { oneDark } from '@codemirror/theme-one-dark'
 
 const props = defineProps<{
@@ -23,8 +24,9 @@ let view: EditorView | null = null
 const languageExtensions: Record<string, any> = {
   javascript: javascript(),
   cpp: cpp(),
-  python3: python(),
+  python: python(),
   pypy3: python(),
+  java8: java(),
   // 可以添加更多语言支持
 }
 
