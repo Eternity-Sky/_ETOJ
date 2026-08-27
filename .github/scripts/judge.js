@@ -333,10 +333,33 @@ async function main() {
           };
         }
       } else if (language === 'dart') {
-        runCmd = [
-          'dart',
-          srcPath
-        ];
+        try {
+          execFileSync(
+            'dart',
+            [
+              'compile',
+              'exe',
+              srcPath,
+              '-o',
+              'main'
+            ],
+            {
+              cwd: workdir,
+              timeout: 10000,
+              stdio: 'pipe'
+            }
+          );
+
+          runCmd = [
+            `${workdir}/main`
+          ];
+
+        } catch (e) {
+          compileStatus = {
+            status: 'compile_error',
+            msg: e.stderr?.toString() || e.stdout?.toString() || e.message
+          };
+        }
       } else if (language === 'php') {
         runCmd = ['php', srcPath];
       } else {
@@ -440,13 +463,26 @@ async function main() {
   }
 
   for (let i = 0; i < actualTestCases.length; i++) {
+    // Check for compile error before running any test case
+    if (compileStatus?.status === 'compile_error') {
+      results.push({
+        index: i,
+        passed: false,
+        timeMs: 0,
+        memoryKb: 0,
+        reason: 'CE',
+        message: compileStatus.msg
+      });
+      continue;
+    }
+
     const tc = actualTestCases[i];
     const r = await runCase(tc.input);
     totalTime += r.timeMs;
     maxMem = Math.max(maxMem, r.memoryKb || 0);
     let passed = false;
     let reason = null;
-    
+
     if (r.memoryKb > memoryLimitMb * 1024) {
       failedReason = failedReason || 'memory_limit_exceeded';
       reason = 'MLE';
@@ -461,7 +497,7 @@ async function main() {
       passed = norm(r.output) === norm(tc.output);
       if (!passed) failedReason = failedReason || 'wrong_answer';
     }
-    
+
     if (!passed) allPass = false;
     results.push({
       index: i,
@@ -475,11 +511,24 @@ async function main() {
   }
 
   const details = { passed: allPass, details: results };
+
+  let finalStatus;
+  if (compileStatus?.status === 'compile_error') {
+    finalStatus = 'compile_error';
+  } else if (failedReason) {
+    finalStatus = failedReason;
+  } else if (allPass) {
+    finalStatus = 'accepted';
+  } else {
+    finalStatus = 'wrong_answer';
+  }
+
   emit({
-    status: allPass ? 'accepted' : (failedReason || 'wrong_answer'),
+    status: finalStatus,
     runTimeMs: totalTime,
     memoryKb: maxMem,
-    details
+    details,
+    compileMessage: compileStatus?.msg
   });
 }
 

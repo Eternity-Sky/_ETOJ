@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import { ref, onMounted, computed } from 'vue'
-import { api, type Submission, STATUS_COLOR, STATUS_LABEL, LANGUAGES, TEST_CASE_STATUS } from '@/lib/api'
+import { api, type Submission, STATUS_COLOR, STATUS_LABEL, STATUS_SHORT, LANGUAGES, TEST_CASE_STATUS } from '@/lib/api'
 import { useToast } from '@/lib/toast'
 import UserLink from "@/components/UserLink.vue";
 
@@ -79,6 +79,10 @@ function getCompileError() {
   if (!sub.value?.result_json) return 'No compile error information'
   try {
     const result = JSON.parse(sub.value.result_json)
+    // Try to get compile message from the new field
+    if (result.compileMessage) {
+      return result.compileMessage
+    }
     if (result.error) {
       return result.error
     }
@@ -225,7 +229,7 @@ onMounted(() => {
     <div class="flex flex-wrap items-center gap-3">
       <RouterLink to="/submissions" class="btn-ghost -ml-2">← 提交记录</RouterLink>
       <h1 class="text-xl font-bold">提交 #{{ sub.id }}</h1>
-      <span :class="['tag', STATUS_COLOR[sub.status as keyof typeof STATUS_COLOR]]">{{ STATUS_LABEL[sub.status as keyof typeof STATUS_LABEL] || sub.status }}</span>
+      <span :class="['tag', STATUS_COLOR[sub.status as keyof typeof STATUS_COLOR]]">{{ STATUS_SHORT[sub.status as keyof typeof STATUS_SHORT] || sub.status }}</span>
       <button @click="retest" class="btn-outline text-xs">重测</button>
       
       <!-- 评测中指示器 -->

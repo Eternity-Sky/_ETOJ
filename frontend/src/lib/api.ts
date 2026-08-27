@@ -168,6 +168,18 @@ export const STATUS_LABEL: Record<SubmissionStatus, string> = {
   system_error: "System Error",
 };
 
+export const STATUS_SHORT: Record<SubmissionStatus, string> = {
+  pending: "Pending",
+  judging: "Judging",
+  accepted: "AC",
+  wrong_answer: "WA",
+  time_limit_exceeded: "TLE",
+  memory_limit_exceeded: "MLE",
+  runtime_error: "RE",
+  compile_error: "CE",
+  system_error: "SE",
+};
+
 export const STATUS_COLOR: Record<SubmissionStatus, string> = {
   pending: "bg-zinc-700 text-zinc-300",
   judging: "bg-blue-900 text-blue-300",
