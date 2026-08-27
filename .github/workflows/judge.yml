@@ -43,7 +43,7 @@ jobs:
           node -e "
             const p = require('./submission.json');
             const fs = require('fs');
-            const ext = { c: 'c', cpp: 'cpp', python3: 'py', pypy3: 'py', java8: 'java', java11: 'java', java17: 'java', java21: 'java', go: 'go', rust: 'rs', javascript: 'js', typescript: 'ts', csharp: 'cs', kotlin: 'kt', scala: 'scala', dart: 'dart', swift: 'swift', php: 'php' };
+            const ext = { c: 'c', cpp: 'cpp', python3: 'py', pypy3: 'py', java8: 'java', java11: 'java', java17: 'java', java21: 'java', go: 'go', rust: 'rs', javascript: 'js', typescript: 'ts', csharp: 'cs', kotlin: 'kt', scala: 'scala', dart: 'dart', swift: 'swift', haskell: 'hs', julia: 'jl', r: 'r', php: 'php' };
             const e = ext[p.language] || p.language;
             let fname;
             if (p.language.startsWith('java')) {
@@ -54,6 +54,8 @@ jobs:
               fname = 'Program.cs';
             } else if (p.language === 'kotlin') {
               fname = 'Main.kt';
+            } else if (p.language === 'haskell') {
+              fname = 'Main.hs';
             } else {
               fname = 'solution.' + e;
             }
@@ -106,6 +108,16 @@ jobs:
             echo "/opt/dart-sdk/bin" >> $GITHUB_PATH
           elif [[ "$LANGUAGE" == "swift" ]]; then
             sudo apt-get install -y swift
+          elif [[ "$LANGUAGE" == "haskell" ]]; then
+            sudo apt-get install -y ghc
+          elif [[ "$LANGUAGE" == "julia" ]]; then
+            wget https://julialang-s3.julialang.org/bin/linux/x64/1.10/julia-1.10.0-linux-x86_64.tar.gz
+            tar -xzf julia-1.10.0-linux-x86_64.tar.gz
+            sudo mv julia-1.10.0 /opt/julia
+            export PATH="$PATH:/opt/julia/bin"
+            echo "/opt/julia/bin" >> $GITHUB_PATH
+          elif [[ "$LANGUAGE" == "r" ]]; then
+            sudo apt-get install -y r-base
           elif [[ "$LANGUAGE" == "php" ]]; then
             sudo apt-get install -y php
           else
@@ -121,6 +133,9 @@ jobs:
           LANGUAGE=$(node -e "const p = require('./submission.json'); console.log(p.language);")
           if [ "$LANGUAGE" = "dart" ]; then
             export PATH="$PATH:/opt/dart-sdk/bin"
+          fi
+          if [ "$LANGUAGE" = "julia" ]; then
+            export PATH="$PATH:/opt/julia/bin"
           fi
           node .github/scripts/judge.js submission.json 2>&1 | tee judge_output.log
         continue-on-error: true

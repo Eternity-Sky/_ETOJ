@@ -43,6 +43,9 @@ const languageExtensions: Record<string, any> = {
   scala: javascript(),
   dart: javascript(),
   swift: javascript(),
+  haskell: javascript(),
+  julia: javascript(),
+  r: javascript(),
   // 可以添加更多语言支持
 }
 

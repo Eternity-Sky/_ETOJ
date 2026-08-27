@@ -247,5 +247,8 @@ export const LANGUAGES = [
   { value: "scala", label: "Scala", ext: "scala" },
   { value: "dart", label: "Dart", ext: "dart" },
   { value: "swift", label: "Swift", ext: "swift" },
+  { value: "haskell", label: "Haskell", ext: "hs" },
+  { value: "julia", label: "Julia", ext: "jl" },
+  { value: "r", label: "R", ext: "r" },
   { value: "php", label: "PHP", ext: "php" },
 ];

@@ -77,6 +77,22 @@ let b = Int(readLine()!)!
 
 print(a + b)
 `,
+
+  haskell: `main = do
+    a <- readLn
+    b <- readLn
+    print (a + b)
+`,
+
+  julia: `a = parse(Int, readline())
+b = parse(Int, readline())
+println(a + b)
+`,
+
+  r: `a <- as.integer(readline())
+b <- as.integer(readline())
+cat(a + b)
+`,
 }
 
 const acceptRate = computed(() => {
