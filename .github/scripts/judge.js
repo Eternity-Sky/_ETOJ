@@ -91,7 +91,20 @@ async function main() {
         execFileSync('g++', ['-O2', '-std=c++23', '-o', 'solution', 'solution.cpp'], { cwd: workdir, timeout: 15000, stdio: 'pipe' });
         runCmd = [path.join(workdir, 'solution')];
       } else if (language === 'python') {
-        runCmd = ['python3', srcPath];
+        // Python 语法检查
+        try {
+          execFileSync('python3', ['-m', 'py_compile', srcPath], { cwd: workdir, timeout: 10000, stdio: 'pipe' });
+          runCmd = ['python3', srcPath];
+        } catch (e) {
+          let errorMsg = e.message || 'Python syntax error';
+          if (e.stderr) {
+            errorMsg = e.stderr.toString();
+          } else if (e.stdout) {
+            errorMsg = e.stdout.toString();
+          }
+          console.error('Python 语法错误:', errorMsg);
+          compileStatus = { status: 'compile_error', msg: errorMsg };
+        }
       } else if (language === 'php') {
         runCmd = ['php', srcPath];
       } else {
