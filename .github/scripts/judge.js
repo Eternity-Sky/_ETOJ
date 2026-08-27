@@ -60,6 +60,8 @@ async function main() {
     java21: 'java',
     go: 'go',
     rust: 'rs',
+    javascript: 'js',
+    typescript: 'ts',
     php: 'php'
   };
   const ext = extMap[language] || 'cpp';
@@ -211,6 +213,36 @@ async function main() {
           compileStatus = {
             status: 'compile_error',
             msg: errorMsg
+          };
+        }
+      } else if (language === 'javascript') {
+        runCmd = ['node', srcPath];
+      } else if (language === 'typescript') {
+        try {
+          execFileSync(
+            'tsc',
+            [
+              srcPath,
+              '--target',
+              'ES2020',
+              '--module',
+              'commonjs'
+            ],
+            {
+              cwd: workdir,
+              timeout: 10000,
+              stdio: 'pipe'
+            }
+          );
+
+          const jsFile = srcPath.replace('.ts', '.js');
+
+          runCmd = ['node', jsFile];
+
+        } catch (e) {
+          compileStatus = {
+            status: 'compile_error',
+            msg: e.stderr?.toString() || e.message
           };
         }
       } else if (language === 'php') {

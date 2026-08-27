@@ -51,6 +51,10 @@ const templates: Record<string, string> = {
   go: `package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, ETOJ")\n}\n`,
 
   rust: `fn main() {\n    println!("Hello, ETOJ");\n}\n`,
+
+  javascript: `const fs = require("fs");\n\nconsole.log("Hello ETOJ");\n`,
+
+  typescript: `function main() {\n    console.log("Hello ETOJ");\n}\n\nmain();\n`,
 }
 
 const acceptRate = computed(() => {
