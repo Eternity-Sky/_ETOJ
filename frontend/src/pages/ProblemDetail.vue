@@ -75,6 +75,8 @@ async function getCaptcha() {
     const response = await api.get('/api/captcha')
     captchaId.value = response.captchaId
     captchaCode.value = response.captchaCode
+    captchaInput.value = '' // 刷新时清空输入
+    console.log('验证码已刷新，ID:', response.captchaId)
   } catch (e: any) {
     console.error('Failed to get captcha:', e)
   }

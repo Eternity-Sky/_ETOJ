@@ -547,12 +547,35 @@ app.post("/api/webhooks/judge", async (c) => {
     
     const { submissionId, problemId, userId, status, resultJson, runTimeMs, memoryKb, accepted } = await c.req.json();
     
+    // 处理可能的resultJson双重转义问题
+    let safeResultJson = resultJson;
+    try {
+      // 先尝试直接解析
+      JSON.parse(resultJson);
+    } catch (e) {
+      console.error("resultJson直接解析失败，尝试解析转义:", e);
+      try {
+        // 如果是字符串形式的JSON，尝试解析
+        if (typeof resultJson === 'string') {
+          const parsed = JSON.parse(resultJson);
+          safeResultJson = JSON.stringify(parsed);
+        }
+      } catch (e2) {
+        console.error("resultJson转义解析也失败:", e2);
+        safeResultJson = JSON.stringify({
+          passed: false,
+          error: "评测结果解析失败",
+          details: []
+        });
+      }
+    }
+    
     await applyJudgeResult(c.env.DB, {
       submissionId,
       problemId,
       userId,
       status,
-      resultJson,
+      resultJson: safeResultJson,
       runTimeMs,
       memoryKb,
       accepted,
@@ -702,19 +725,27 @@ app.post("/api/webhooks/judge", async (c) => {
     
     const { submissionId, problemId, userId, status, resultJson, runTimeMs, memoryKb, accepted, githubRunId, judgeLatencyMs } = await c.req.json();
     
-    // 确保 resultJson 是有效的 JSON 字符串
+    // 处理可能的resultJson双重转义问题
     let safeResultJson = resultJson;
     try {
-      // 尝试解析 resultJson 确保它是有效的 JSON
+      // 先尝试直接解析
       JSON.parse(resultJson);
     } catch (e) {
-      console.error("Invalid resultJson received:", e);
-      // 如果解析失败，创建一个安全的错误信息
-      safeResultJson = JSON.stringify({
-        passed: false,
-        error: "评测结果解析失败",
-        details: []
-      });
+      console.error("resultJson直接解析失败，尝试解析转义:", e);
+      try {
+        // 如果是字符串形式的JSON，尝试解析
+        if (typeof resultJson === 'string') {
+          const parsed = JSON.parse(resultJson);
+          safeResultJson = JSON.stringify(parsed);
+        }
+      } catch (e2) {
+        console.error("resultJson转义解析也失败:", e2);
+        safeResultJson = JSON.stringify({
+          passed: false,
+          error: "评测结果解析失败",
+          details: []
+        });
+      }
     }
     
     await applyJudgeResult(c.env.DB, {

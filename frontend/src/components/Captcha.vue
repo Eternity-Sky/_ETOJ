@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 
 const props = defineProps<{
   modelValue: string
@@ -74,20 +74,27 @@ function generateCaptcha(code: string) {
 }
 
 function refresh() {
+  console.log('刷新验证码被调用')
   emit('refresh')
 }
 
 // 监听captchaCode变化，重新绘制
-import { watch } from 'vue'
-watch(() => props.captchaCode, (newCode) => {
-  if (newCode) {
-    generateCaptcha(newCode)
+watch(() => props.captchaCode, (newCode, oldCode) => {
+  console.log('captchaCode变化:', oldCode, '->', newCode)
+  if (newCode && newCode !== oldCode) {
+    // 使用nextTick确保DOM更新后再绘制
+    nextTick(() => {
+      generateCaptcha(newCode)
+    })
   }
-})
+}, { immediate: true })
 
 onMounted(() => {
+  console.log('Captcha组件挂载，captchaCode:', props.captchaCode)
   if (props.captchaCode) {
-    generateCaptcha(props.captchaCode)
+    nextTick(() => {
+      generateCaptcha(props.captchaCode)
+    })
   }
 })
 
